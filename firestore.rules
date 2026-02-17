@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function validSeverity(severity) {
+      return severity in ["low", "medium", "high", "critical"];
+    }
+
+    function validIncidentPayload(data) {
+      return data.keys().hasOnly(["title", "location", "severity", "summary", "createdBy", "createdAt", "status"])
+        && data.title is string
+        && data.title.size() >= 3
+        && data.title.size() <= 120
+        && data.location is string
+        && data.location.size() >= 2
+        && data.location.size() <= 140
+        && data.summary is string
+        && data.summary.size() >= 5
+        && data.summary.size() <= 1000
+        && validSeverity(data.severity)
+        && data.createdBy == request.auth.uid
+        && data.status == "open";
+    }
+
+    match /incidents/{incidentId} {
+      allow create: if isSignedIn() && validIncidentPayload(request.resource.data);
+      allow read: if isSignedIn();
+      allow update, delete: if isSignedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validIncidentPayload(request.resource.data);
+    }
+
+    match /escortRequests/{requestId} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(["location", "notes", "status", "requesterUid", "createdAt"])
+        && request.resource.data.location is string
+        && request.resource.data.location.size() >= 3
+        && request.resource.data.location.size() <= 140
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() >= 5
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.status == "pending"
+        && request.resource.data.requesterUid == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+
+      match /tokens/{tokenId} {
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(["createdAt", "platform"])
+          && request.resource.data.platform is string
+          && request.resource.data.platform.size() <= 512;
+        allow read, delete: if isOwner(userId);
+        allow update: if false;
+      }
+    }
+  }
+}

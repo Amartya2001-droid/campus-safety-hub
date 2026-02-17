@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import SOSAlerts from "./pages/SOSAlerts";
 import Escorts from "./pages/Escorts";
@@ -16,22 +17,24 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/alerts" element={<SOSAlerts />} />
-          <Route path="/escorts" element={<Escorts />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/broadcast" element={<Broadcast />} />
-          <Route path="/map" element={<CampusMap />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/alerts" element={<SOSAlerts />} />
+            <Route path="/escorts" element={<Escorts />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/broadcast" element={<Broadcast />} />
+            <Route path="/map" element={<CampusMap />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

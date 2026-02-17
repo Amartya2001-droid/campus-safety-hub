@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "acadia-campus-hub-dev",
+    "dev": "acadia-campus-hub-dev",
+    "prod": "acadia-campus-hub-prod"
+  }
+}

@@ -1,40 +1,111 @@
+# Campus Safety Hub
 
+Campus dashboard with Firebase Authentication, Firestore, Cloud Functions, and Cloud Messaging integration.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- React + Vite + TypeScript
+- Firebase Web SDK (Auth, Firestore, Functions, Messaging)
+- Firebase Cloud Functions (Node.js + TypeScript)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 1) Frontend setup
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+nvm use
+npm install
+cp .env.example .env
+```
+
+Fill `.env` with your Firebase web app values:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_VAPID_PUBLIC_KEY`
+
+Environment separation files:
+
+- Development template: `.env.development.example`
+- Production template: `.env.production.example`
+
+Also update `public/firebase-messaging-sw.js` with the same Firebase config values.
+
+Run app:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Use `/settings` to test:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Sign up / Sign in / Sign out (Auth)
+- Write and read incidents (Firestore)
+- Call `assignEscort` and `sendBroadcastNotification` (Functions)
+- Register browser push token (Messaging)
 
-**Use GitHub Codespaces**
+## 2) Functions setup
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Install function dependencies:
 
-## What technologies are used for this project?
+```bash
+cd functions
+npm install
+```
 
-This project is built with:
+Build functions:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm run build
+```
 
+## 3) Firebase project setup
+
+Login and pick your project:
+
+```bash
+firebase login
+firebase use dev
+```
+
+Deploy Firestore rules/indexes + Functions:
+
+```bash
+firebase deploy --only firestore,functions
+```
+
+Production deploy:
+
+```bash
+firebase use prod
+firebase deploy --only firestore,functions
+```
+
+## 4) Local emulators (optional)
+
+From repo root:
+
+```bash
+firebase emulators:start
+```
+
+## 5) Production readiness - Week 1 baseline
+
+Security hardening shipped in this repository:
+
+- Firestore schema validation and immutable field checks in `firestore.rules`.
+- Callable functions require Authentication and App Check in `functions/src/index.ts`.
+- Node runtime pinned to LTS with `.nvmrc` and `package.json` engine constraints.
+
+Observability baseline:
+
+- Structured client logs and global unhandled error capture in `src/lib/observability.ts`.
+- Structured function logs in callable entrypoints.
+
+CI baseline:
+
+- GitHub Actions workflow at `.github/workflows/ci.yml`.
+- Web checks: lint + test + build.
+- Functions checks: lint + build.
