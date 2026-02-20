@@ -61,6 +61,18 @@ Build functions:
 npm run build
 ```
 
+Seed test users (admin + student) and remove all others in Firebase Auth:
+
+```bash
+cd functions
+GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json npm run seed:test-users
+```
+
+Seeded users:
+
+- `amartyakarmakar@gmail.com` / `password` with role `admin`
+- `162478k@acadiau.ca` / `password` with role `student`
+
 ## 3) Firebase project setup
 
 Login and pick your project:

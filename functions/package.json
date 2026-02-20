@@ -10,6 +10,7 @@
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "lint": "eslint --ext .ts src",
+    "seed:test-users": "node scripts/seed-test-users.mjs --confirm",
     "ci": "npm run lint && npm run build"
   },
   "dependencies": {

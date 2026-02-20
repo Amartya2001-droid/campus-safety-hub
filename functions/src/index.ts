@@ -1,16 +1,34 @@
 import { initializeApp } from "firebase-admin/app";
-import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
 initializeApp();
-const db = getFirestore();
 
 const callableDefaults = {
   region: "northamerica-northeast1",
   enforceAppCheck: true,
 };
+
+type Role = "admin" | "student";
+
+function getRole(request: { auth?: { token?: Record<string, unknown> | null } | null }): Role | null {
+  const role = request.auth?.token?.role;
+  if (role === "admin" || role === "student") {
+    return role;
+  }
+
+  return null;
+}
+
+function requireRole(
+  request: { auth?: { token?: Record<string, unknown> | null; uid?: string | null } | null },
+  allowedRoles: Role[],
+) {
+  const role = getRole(request);
+  if (!role || !allowedRoles.includes(role)) {
+    throw new HttpsError("permission-denied", `Requires role: ${allowedRoles.join(", ")}`);
+  }
+}
 
 function baseLogContext(request: { auth?: { uid?: string | null } | null; data?: unknown }) {
   return {
@@ -20,11 +38,14 @@ function baseLogContext(request: { auth?: { uid?: string | null } | null; data?:
 }
 
 export const assignEscort = onCall(callableDefaults, async (request) => {
+  const { FieldValue, getFirestore } = await import("firebase-admin/firestore");
+  const db = getFirestore();
   logger.info("assign_escort_started", baseLogContext(request));
 
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Authentication is required.");
   }
+  requireRole(request, ["admin", "student"]);
 
   const location = request.data?.location;
   const notes = request.data?.notes;
@@ -55,11 +76,16 @@ export const assignEscort = onCall(callableDefaults, async (request) => {
 });
 
 export const sendBroadcastNotification = onCall(callableDefaults, async (request) => {
+  const { getFirestore } = await import("firebase-admin/firestore");
+  const { getMessaging } = await import("firebase-admin/messaging");
+  const db = getFirestore();
+  const messaging = getMessaging();
   logger.info("broadcast_notification_started", baseLogContext(request));
 
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Authentication is required.");
   }
+  requireRole(request, ["admin"]);
 
   const title = request.data?.title;
   const body = request.data?.body;
@@ -79,7 +105,7 @@ export const sendBroadcastNotification = onCall(callableDefaults, async (request
     return { sentCount: 0 };
   }
 
-  const result = await getMessaging().sendEachForMulticast({
+  const result = await messaging.sendEachForMulticast({
     tokens,
     notification: {
       title: title.trim(),
