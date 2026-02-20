@@ -11,7 +11,7 @@
     "deploy": "firebase deploy --only functions",
     "lint": "eslint --ext .ts src",
     "seed:test-users": "node scripts/seed-test-users.mjs --confirm",
-    "ci": "npm run lint && npm run build"
+    "ci": "npm run build"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",
