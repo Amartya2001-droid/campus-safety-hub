@@ -6,10 +6,13 @@ import {
   Megaphone,
   Map,
   Settings,
-  Shield,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -28,7 +31,8 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "SOS Alerts", url: "/alerts", icon: AlertTriangle },
   { title: "Escorts", url: "/escorts", icon: Footprints },
-  { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Reports (StarRez)", url: "/reports", icon: FileText },
+  { title: "Campus Patrol", url: "/patrols", icon: ShieldCheck },
   { title: "Broadcast", url: "/broadcast", icon: Megaphone },
   { title: "Campus Map", url: "/map", icon: Map },
 ];
@@ -37,17 +41,25 @@ const systemItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
+const roleLabels: Record<string, string> = {
+  admin: "Admin",
+  safety_official: "Safety Official",
+  student: "Student",
+  faculty: "Faculty",
+};
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emergency">
-            <Shield className="h-5 w-5 text-emergency-foreground" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 dark:bg-slate-800 p-1">
+            <img src="/logo.png" alt="Acadia Safe" className="h-full w-full object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
@@ -127,15 +139,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        {!collapsed && (
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
-              EJ
+        {!collapsed && user && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                {user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-medium text-sidebar-accent-foreground truncate" data-testid="text-username">{user.name}</span>
+                <span className="text-[11px] text-muted-foreground" data-testid="text-user-role">{roleLabels[user.role] || user.role}</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium text-sidebar-accent-foreground">Eden Jordan</span>
-              <span className="text-[11px] text-muted-foreground">Supervisor</span>
-            </div>
+            <Button variant="ghost" size="icon" onClick={logout} data-testid="button-logout">
+              <LogOut className="h-4 w-4 text-muted-foreground" />
+            </Button>
           </div>
         )}
       </SidebarFooter>

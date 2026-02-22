@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 type StatusType =
   | "new" | "assigned" | "en_route" | "on_scene" | "resolved"
   | "pending" | "in_progress" | "completed" | "cancelled"
-  | "under_review" | "closed";
+  | "under_review" | "closed"
+  | "active" | "declined" | "expired";
 
 const statusConfig: Record<StatusType, { label: string; className: string }> = {
   new: { label: "New", className: "bg-emergency/15 text-emergency border-emergency/30" },
@@ -17,6 +18,9 @@ const statusConfig: Record<StatusType, { label: string; className: string }> = {
   cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground border-border" },
   under_review: { label: "Under Review", className: "bg-warning/15 text-warning border-warning/30" },
   closed: { label: "Closed", className: "bg-muted text-muted-foreground border-border" },
+  active: { label: "Active", className: "bg-success/15 text-success border-success/30" },
+  declined: { label: "Declined", className: "bg-muted text-muted-foreground border-border" },
+  expired: { label: "Expired", className: "bg-warning/15 text-warning border-warning/30" },
 };
 
 interface StatusBadgeProps {
@@ -47,6 +51,9 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         status === "cancelled" && "bg-muted-foreground",
         status === "under_review" && "bg-warning",
         status === "closed" && "bg-muted-foreground",
+        status === "active" && "bg-success",
+        status === "declined" && "bg-muted-foreground",
+        status === "expired" && "bg-warning",
       )} />
       {config.label}
     </span>

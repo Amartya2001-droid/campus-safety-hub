@@ -1,252 +1,192 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  createIncidentReport,
-  fetchRecentIncidents,
-  getErrorMessage,
-  registerMessagingToken,
-  requestEscortAssignment,
-  signInWithEmail,
-  signOutCurrentUser,
-  signUpWithEmail,
-  triggerBroadcastNotification,
-} from "@/lib/firebase-services";
-import { isFirebaseConfigured, missingFirebaseKeys } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { apiFetch, apiRequest } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2, CheckCircle2, XCircle, Link2, TestTube2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+
+const roleLabels: Record<string, string> = {
+  admin: "Admin",
+  safety_official: "Safety Official",
+  student: "Student",
+  faculty: "Faculty",
+};
 
 const SettingsPage = () => {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [incidentTitle, setIncidentTitle] = useState("Suspicious activity near library");
-  const [incidentLocation, setIncidentLocation] = useState("North Library Gate");
-  const [incidentSummary, setIncidentSummary] = useState("Crowd gathering near entry checkpoint.");
-  const [escortNotes, setEscortNotes] = useState("Need escort to Parking Lot B after late shift.");
-  const [broadcastBody, setBroadcastBody] = useState("Emergency drill starts in 15 minutes.");
-  const [vapidPublicKey, setVapidPublicKey] = useState(import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY ?? "");
-  const [incidentsPreview, setIncidentsPreview] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+  const [starrezUrl, setStarrezUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const runAction = async (action: () => Promise<void>) => {
-    setSubmitting(true);
+  const { data: config } = useQuery({
+    queryKey: ["/api/starrez/config"],
+    queryFn: () => apiFetch("/api/starrez/config"),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (config?.base_url) {
+      setStarrezUrl(config.base_url);
+    }
+  }, [config]);
+
+  const handleSave = async () => {
+    if (!starrezUrl.trim()) {
+      toast({ title: "URL required", description: "Please enter your StarRez instance URL", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
     try {
-      await action();
-    } catch (error) {
-      toast({
-        title: "Action failed",
-        description: getErrorMessage(error),
-        variant: "destructive",
+      await apiRequest("/api/starrez/config", {
+        method: "POST",
+        body: JSON.stringify({ base_url: starrezUrl.trim() }),
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/starrez/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/starrez/incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "StarRez configuration saved" });
+      setTestResult(null);
+    } catch (error: any) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
     } finally {
-      setSubmitting(false);
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await apiFetch("/api/starrez/test");
+      setTestResult(result);
+      if (result?.success) {
+        toast({ title: "Connection successful", description: result.message });
+      } else {
+        toast({ title: "Connection failed", description: result?.message || "Unknown error", variant: "destructive" });
+      }
+    } catch (error: any) {
+      setTestResult({ success: false, message: error.message });
+      toast({ title: "Test failed", description: error.message, variant: "destructive" });
+    } finally {
+      setTesting(false);
     }
   };
 
   return (
-    <DashboardLayout title="Settings" subtitle="System configuration and preferences">
-      <div className="space-y-6">
-        {!isFirebaseConfigured && (
-          <Alert>
-            <AlertTitle>Firebase is not configured yet</AlertTitle>
-            <AlertDescription>
-              Add missing Vite env vars: {missingFirebaseKeys.join(", ")}
-            </AlertDescription>
-          </Alert>
-        )}
-
+    <DashboardLayout title="Settings" subtitle="System configuration and integrations">
+      <div className="space-y-6 max-w-2xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Auth</CardTitle>
-            <CardDescription>Create account, sign in, and sign out with Firebase Authentication.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="officer@campus.edu"
-                type="email"
-              />
-              <Input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 6 characters"
-                type="password"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={submitting || loading}
-                onClick={() =>
-                  runAction(async () => {
-                    await signUpWithEmail(email, password);
-                    toast({ title: "Account created" });
-                  })
-                }
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign up"}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={submitting || loading}
-                onClick={() =>
-                  runAction(async () => {
-                    await signInWithEmail(email, password);
-                    toast({ title: "Signed in" });
-                  })
-                }
-              >
-                Sign in
-              </Button>
-              <Button
-                variant="outline"
-                disabled={submitting || loading || !user}
-                onClick={() =>
-                  runAction(async () => {
-                    await signOutCurrentUser();
-                    toast({ title: "Signed out" });
-                  })
-                }
-              >
-                Sign out
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Current user: {loading ? "Checking session..." : user?.email ?? "Not signed in"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Firestore + Functions</CardTitle>
-            <CardDescription>Write incidents to Firestore and invoke callable Cloud Functions.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input value={incidentTitle} onChange={(event) => setIncidentTitle(event.target.value)} placeholder="Incident title" />
-              <Input value={incidentLocation} onChange={(event) => setIncidentLocation(event.target.value)} placeholder="Incident location" />
-            </div>
-            <Textarea
-              value={incidentSummary}
-              onChange={(event) => setIncidentSummary(event.target.value)}
-              placeholder="Incident summary"
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={submitting || !user}
-                onClick={() =>
-                  runAction(async () => {
-                    await createIncidentReport({
-                      title: incidentTitle,
-                      location: incidentLocation,
-                      summary: incidentSummary,
-                      severity: "medium",
-                    });
-                    toast({ title: "Incident saved to Firestore" });
-                  })
-                }
-              >
-                Write incident
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={submitting || !user}
-                onClick={() =>
-                  runAction(async () => {
-                    const incidents = await fetchRecentIncidents();
-                    setIncidentsPreview(incidents.map((entry) => `${entry.title ?? "Untitled"} (${entry.id})`));
-                    toast({ title: `Loaded ${incidents.length} incidents` });
-                  })
-                }
-              >
-                Read incidents
-              </Button>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Textarea
-                value={escortNotes}
-                onChange={(event) => setEscortNotes(event.target.value)}
-                placeholder="Escort request notes"
-              />
-              <Textarea
-                value={broadcastBody}
-                onChange={(event) => setBroadcastBody(event.target.value)}
-                placeholder="Broadcast message"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                disabled={submitting || !user}
-                onClick={() =>
-                  runAction(async () => {
-                    const result = await requestEscortAssignment(incidentLocation, escortNotes);
-                    toast({ title: `Escort request ${result.status}`, description: result.requestId });
-                  })
-                }
-              >
-                Call `assignEscort`
-              </Button>
-              <Button
-                variant="outline"
-                disabled={submitting || !user}
-                onClick={() =>
-                  runAction(async () => {
-                    const result = await triggerBroadcastNotification("Campus Safety Broadcast", broadcastBody);
-                    toast({ title: `Broadcast sent to ${result.sentCount} devices` });
-                  })
-                }
-              >
-                Call `sendBroadcastNotification`
-              </Button>
-            </div>
-            {incidentsPreview.length > 0 && (
-              <div className="rounded-md border border-border p-3 text-sm">
-                <p className="font-medium mb-2">Recent incidents</p>
-                <ul className="space-y-1 text-muted-foreground">
-                  {incidentsPreview.map((entry) => (
-                    <li key={entry}>{entry}</li>
-                  ))}
-                </ul>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <CardTitle className="text-lg">Account</CardTitle>
+                <CardDescription>Your current session information</CardDescription>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {user ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Name</span>
+                  <span className="font-medium" data-testid="text-settings-name">{user.name}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Email</span>
+                  <span className="font-medium" data-testid="text-settings-email">{user.email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Role</span>
+                  <Badge variant="outline" data-testid="text-settings-role">{roleLabels[user.role] || user.role}</Badge>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Not signed in</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Cloud Messaging</CardTitle>
-            <CardDescription>Register browser push token and store it under <code>users/{"{uid}"}/tokens</code>.</CardDescription>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Link2 className="h-5 w-5" />
+                  StarRez Integration
+                </CardTitle>
+                <CardDescription>
+                  Connect to your StarRez instance to pull incident reports. Your portal login credentials are used automatically.
+                </CardDescription>
+              </div>
+              {config?.base_url && (
+                <Badge variant="outline" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  Configured
+                </Badge>
+              )}
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Input
-              value={vapidPublicKey}
-              onChange={(event) => setVapidPublicKey(event.target.value)}
-              placeholder="Firebase Web Push certificate key (VAPID)"
-            />
-            <Button
-              disabled={submitting || !user || !vapidPublicKey}
-              onClick={() =>
-                runAction(async () => {
-                  const token = await registerMessagingToken(vapidPublicKey);
-                  toast({
-                    title: "Push token registered",
-                    description: `${token.slice(0, 18)}...`,
-                  });
-                })
-              }
-            >
-              Enable push notifications
-            </Button>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">StarRez REST API URL</label>
+              <Input
+                value={starrezUrl}
+                onChange={(e) => setStarrezUrl(e.target.value)}
+                placeholder="https://yourinstitution.starrezhousing.com/StarRezREST"
+                data-testid="input-starrez-url"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Usually looks like: https://yourinstitution.starrezhousing.com/StarRezREST
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                onClick={handleSave}
+                disabled={saving || !starrezUrl.trim()}
+                data-testid="button-save-starrez"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Save Configuration
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTest}
+                disabled={testing || !config?.base_url}
+                data-testid="button-test-starrez"
+              >
+                {testing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <TestTube2 className="h-4 w-4 mr-1" />}
+                Test Connection
+              </Button>
+            </div>
+
+            {testResult && (
+              <div className={`flex items-start gap-2 p-3 rounded-md text-sm ${testResult.success ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive"}`}
+                data-testid="text-test-result"
+              >
+                {testResult.success ? (
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                ) : (
+                  <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                )}
+                <span>{testResult.message}</span>
+              </div>
+            )}
+
+            <div className="rounded-md border border-border p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground text-sm">How it works</p>
+              <p>Your portal credentials are used to authenticate with StarRez automatically.</p>
+              <p>Incident reports are fetched in real-time from StarRez's REST API and displayed in the Reports page.</p>
+              <p>No reports are stored locally - everything comes directly from StarRez.</p>
+            </div>
           </CardContent>
         </Card>
       </div>
