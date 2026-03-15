@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -168,9 +169,6 @@ export default function LoginScreen() {
     </View>
   );
 }
-
-// Need to import TextInput
-import { TextInput } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {

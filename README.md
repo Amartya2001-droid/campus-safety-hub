@@ -1,12 +1,27 @@
 # Campus Safety Hub
 
-Campus dashboard with Firebase Authentication, Firestore, Cloud Functions, and Cloud Messaging integration.
+Full-stack campus safety platform with three components:
+
+1. **Security Dashboard** (this directory) — React/Vite web app for security officers (Firebase-backed)
+2. **Backend API** (`backend/`) — Python FastAPI server with MongoDB and Firebase Admin bridge
+3. **Student Mobile App** (`frontend/`) — React Native/Expo app for students
 
 ## Stack
 
+### Security Dashboard
 - React + Vite + TypeScript
 - Firebase Web SDK (Auth, Firestore, Functions, Messaging)
 - Firebase Cloud Functions (Node.js + TypeScript)
+
+### Backend API
+- Python + FastAPI + Motor (async MongoDB)
+- Firebase Admin SDK (Firestore bridge)
+- JWT authentication restricted to `@acadiau.ca` emails
+
+### Student Mobile App
+- React Native + Expo Router
+- Firebase Auth (`@acadiau.ca` email restriction)
+- Connects to the backend REST API
 
 ## 1) Frontend setup
 
@@ -103,7 +118,48 @@ From repo root:
 firebase emulators:start
 ```
 
-## 5) Production readiness - Week 1 baseline
+## 5) Backend API setup
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+Create a `.env` file in `backend/` with:
+
+- `MONGO_URL` — MongoDB connection string
+- `DB_NAME` — database name (default: `campus_safety_db`)
+- `JWT_SECRET_KEY` — secret for JWT token signing
+- `FIREBASE_SERVICE_ACCOUNT_JSON` — (optional) Firebase service account JSON for the Firestore bridge
+
+Run the server:
+
+```bash
+uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+```
+
+Run backend tests:
+
+```bash
+python backend_test.py
+```
+
+## 6) Student Mobile App setup
+
+```bash
+cd frontend
+npm install
+```
+
+Configure `frontend/src/firebase/config.ts` with your Firebase project values. Then:
+
+```bash
+npx expo start
+```
+
+See `frontend/README.md` for full Expo setup details.
+
+## 7) Production readiness - Week 1 baseline
 
 Security hardening shipped in this repository:
 
