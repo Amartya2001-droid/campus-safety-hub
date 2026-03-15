@@ -12,7 +12,8 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 import re
 import firebase_admin
 from firebase_admin import credentials, firestore as firebase_firestore
@@ -240,7 +241,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         return user
-    except JWTError:
+    except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def validate_acadia_email(email: str) -> bool:
