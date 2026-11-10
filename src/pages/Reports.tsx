@@ -108,7 +108,7 @@ const Reports = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {incidents.map((incident: any, idx: number) => (
+              {incidents.map((incident, idx: number) => (
                 <TableRow key={incident.IncidentReportID || idx} className="border-border hover:bg-accent/30" data-testid={`row-report-${incident.IncidentReportID || idx}`}>
                   <TableCell>
                     <span className="text-xs font-mono text-muted-foreground">

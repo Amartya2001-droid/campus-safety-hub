@@ -32,8 +32,8 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password, role);
-    } catch (err: any) {
-      toast({ title: "Login failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Login failed", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { formatTimeAgo, apiRequest, apiFetch } from "@/lib/api";
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const typeConfig: Record<string, { icon: any; className: string }> = {
+const typeConfig: Record<string, { icon: LucideIcon; className: string }> = {
   emergency: { icon: AlertTriangle, className: "text-emergency bg-emergency/15" },
   weather: { icon: CloudSnow, className: "text-info bg-info/15" },
   advisory: { icon: Info, className: "text-warning bg-warning/15" },
@@ -56,7 +57,7 @@ const Broadcast = () => {
       toast({ title: "Broadcast sent successfully" });
     },
     onError: (err: Error) => {
-      toast({ title: "Failed to send broadcast", description: err.message, variant: "destructive" });
+      toast({ title: "Failed to send broadcast", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     },
   });
 
@@ -147,7 +148,7 @@ const Broadcast = () => {
               No broadcasts sent yet. Create one using the form.
             </div>
           ) : (
-            alerts.map((alert: any) => {
+            alerts.map((alert) => {
               const config = typeConfig[alert.type] || typeConfig.general;
               const Icon = config.icon;
               return (

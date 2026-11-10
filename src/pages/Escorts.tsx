@@ -40,7 +40,7 @@ const Escorts = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {escorts.map((escort: any) => (
+          {escorts.map((escort) => (
             <div key={escort.id} className="glass-card p-4 hover:border-primary/30 transition-colors" data-testid={`card-escort-${escort.id}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-start gap-3">

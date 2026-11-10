@@ -61,8 +61,8 @@ async function start() {
       proxy: true,
       cookie: {
         httpOnly: true,
-        sameSite: "none" as const,
-        secure: true,
+        sameSite: isProduction ? "none" as const : "lax" as const,
+        secure: isProduction,
         maxAge: 24 * 60 * 60 * 1000,
       },
     })
@@ -234,11 +234,13 @@ async function start() {
       const data = await response.json();
       const incidents = Array.isArray(data) ? data : [];
       return res.json({ connected: true, data: incidents, message: `${incidents.length} reports loaded from StarRez` });
-    } catch (error: any) {
-      if (error.cause?.code === "ENOTFOUND" || error.cause?.code === "ECONNREFUSED") {
+    } catch (error: unknown) {
+      const cause = error instanceof Error ? error.cause : undefined;
+      const code = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
+      if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
         return res.json({ connected: false, data: [], message: "Cannot reach StarRez server. Check your URL." });
       }
-      return res.json({ connected: false, data: [], message: `Connection error: ${error.message}` });
+      return res.json({ connected: false, data: [], message: `Connection error: ${(error instanceof Error ? error.message : "Request failed")}` });
     }
   });
 
@@ -274,8 +276,8 @@ async function start() {
         return res.json({ success: false, message: "Authentication failed - check credentials" });
       }
       return res.json({ success: false, message: `StarRez returned status ${response.status}` });
-    } catch (error: any) {
-      return res.json({ success: false, message: `Cannot reach StarRez: ${error.message}` });
+    } catch (error: unknown) {
+      return res.json({ success: false, message: `Cannot reach StarRez: ${(error instanceof Error ? error.message : "Request failed")}` });
     }
   });
 
@@ -373,7 +375,7 @@ async function start() {
     if (!user) return res.status(401).json({ message: "User not found" });
     const sessionId = parseInt(req.params.id as string);
     const sessions = await getPatrolSessions(user.role, user.id);
-    const target = sessions.find((s: any) => s.id === sessionId && s.status === "active");
+    const target = sessions.find((s) => s.id === sessionId && s.status === "active");
     if (!target) return res.status(404).json({ message: "Session not found or not active" });
     if (user.role !== "admin" && user.role !== "safety_official" && user.id !== target.assigned_student_id) {
       return res.status(403).json({ message: "Not authorized to end this session" });
@@ -398,7 +400,7 @@ async function start() {
     const user = await findUserById(userId);
     if (!user) return res.status(401).json({ message: "User not found" });
     const sessions = await getPatrolSessions(user.role, userId);
-    const target = sessions.find((s: any) => s.id === sessionId && s.status === "active");
+    const target = sessions.find((s) => s.id === sessionId && s.status === "active");
     if (!target) return res.status(404).json({ message: "Session not found or not active" });
     if (target.assigned_student_id !== userId) {
       return res.status(403).json({ message: "Only the assigned student can check in" });
@@ -500,7 +502,7 @@ async function start() {
   if (isProduction) {
     const distPath = path.resolve(__dirname, "..", "dist");
     app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
+    app.get("/{*splat}", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {

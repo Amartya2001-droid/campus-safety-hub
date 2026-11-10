@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+import bcrypt from 'bcryptjs';
+
+// Use only a disposable local/CI database: the server initializes and seeds it.
+assert.ok(process.env.DATABASE_URL, 'Set DATABASE_URL to a disposable test database');
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const email = `${randomUUID()}@example.invalid`;
+const password = randomUUID();
+const base = 'http://127.0.0.1:5000';
+let userId;
+try {
+  for (const mode of ['development', 'production']) {
+    let output = '';
+    const server = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], {
+      env: { ...process.env, NODE_ENV: mode, SESSION_SECRET: randomUUID() },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    server.stdout.on('data', data => { output += data; });
+    server.stderr.on('data', data => { output += data; });
+    try {
+      for (let attempt = 0; !output.includes('Server running on'); attempt++) {
+        assert.ok(attempt < 200 && server.exitCode === null, `Server failed: ${output}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      if (!userId) {
+        const result = await pool.query(
+          'INSERT INTO users (name,email,role,password_hash) VALUES ($1,$2,$3,$4) RETURNING id',
+          ['Smoke Test', email, 'student', await bcrypt.hash(password, 10)],
+        );
+        userId = result.rows[0].id;
+      }
+      const page = await fetch(`${base}/login`);
+      assert.equal(page.status, 200);
+      assert.match(await page.text(), /<div id="root"><\/div>/);
+      assert.equal((await fetch(`${base}/api/me`)).status, 401);
+      assert.equal((await fetch(`${base}/api/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})).status, 400);
+      const login = await fetch(`${base}/api/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: 'student' }),
+        ...(mode === 'production' ? { headers: { 'Content-Type':'application/json', 'X-Forwarded-Proto':'https' } } : {}),
+      });
+      assert.equal(login.status, 200);
+      const cookie = login.headers.get('set-cookie');
+      assert.ok(cookie, 'Login must issue a session cookie');
+      assert.equal(/; Secure/i.test(cookie), mode === 'production');
+      assert.match(cookie, mode === 'production' ? /SameSite=None/i : /SameSite=Lax/i);
+      const headers = { Cookie: cookie.split(';')[0] };
+      const me = await fetch(`${base}/api/me`, { headers });
+      assert.equal(me.status, 200);
+      assert.equal((await me.json()).id, userId);
+      assert.equal((await fetch(`${base}/api/logout`, { method:'POST', headers })).status, 200);
+      assert.equal((await fetch(`${base}/api/me`, { headers })).status, 401);
+      console.log(`${mode}: SPA, auth validation, cookie, session persistence and logout passed`);
+    } finally {
+      server.kill('SIGTERM');
+      await new Promise(resolve => server.once('exit', resolve));
+    }
+  }
+} finally {
+  if (userId) await pool.query('DELETE FROM users WHERE id=$1', [userId]);
+  await pool.end();
+}

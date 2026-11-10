@@ -37,7 +37,7 @@ const SOSAlerts = () => {
     },
   });
 
-  const activeCount = alerts.filter((a: any) => a.status === "new").length;
+  const activeCount = alerts.filter((a) => a.status === "new").length;
 
   return (
     <DashboardLayout title="SOS Alerts" subtitle="Real-time emergency alerts from students">
@@ -76,7 +76,7 @@ const SOSAlerts = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {alerts.map((alert: any) => (
+              {alerts.map((alert) => (
                 <TableRow key={alert.id} className="border-border hover:bg-accent/30" data-testid={`row-alert-${alert.id}`}>
                   <TableCell>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
