@@ -1,123 +1,68 @@
-# Campus Safety Hub
+# Acadia Safe — Campus Safety Hub
 
-Campus dashboard with Firebase Authentication, Firestore, Cloud Functions, and Cloud Messaging integration.
+The current `main` application is a React/Vite dashboard with an Express API and PostgreSQL session/data storage. Firebase integration files and Cloud Functions are also present, but dashboard sign-in uses `/api/login`, not Firebase Authentication.
 
-## Stack
+**Live status:** not live yet — blocked by an unconfirmed deployment URL, production configuration and security review. No live deployment has been verified. Local development runs at http://localhost:5000.
 
-- React + Vite + TypeScript
-- Firebase Web SDK (Auth, Firestore, Functions, Messaging)
-- Firebase Cloud Functions (Node.js + TypeScript)
+The commands and passing CI/smoke results below require the companion [runtime and CI fix PR](https://github.com/Amartya2001-droid/campus-safety-hub/pull/2); they describe that tested candidate. Until it merges, `main` still has the local startup/cookie/production-route defects and lint errors identified during triage.
 
-## 1) Frontend setup
+## Run locally
 
-```bash
-nvm use
-npm install
-cp .env.example .env
-```
-
-Fill `.env` with your Firebase web app values:
-
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
-- `VITE_FIREBASE_VAPID_PUBLIC_KEY`
-
-Environment separation files:
-
-- Development template: `.env.development.example`
-- Production template: `.env.production.example`
-
-Also update `public/firebase-messaging-sw.js` with the same Firebase config values.
-
-Run app:
+Use Node.js 20 (`nvm use`) and a disposable local PostgreSQL database:
 
 ```bash
+npm ci
+export DATABASE_URL=postgresql://postgres@localhost:5432/postgres
+# Set SESSION_SECRET through your local environment; never commit it.
 npm run dev
 ```
 
-Use `/settings` to test:
+`npm run dev` runs Express and Vite together. `npm run dev:web` runs only Vite for UI work; authenticated API flows require Express. The database schema, demo accounts and campus locations are initialized automatically. The existing demo seed uses shared passwords: use only disposable local data. Production use requires removing/replacing those accounts and configuring a strong session secret.
 
-- Sign up / Sign in / Sign out (Auth)
-- Write and read incidents (Firestore)
-- Call `assignEscort` and `sendBroadcastNotification` (Functions)
-- Register browser push token (Messaging)
-
-## 2) Functions setup
-
-Install function dependencies:
-
-```bash
-cd functions
-npm install
-```
-
-Build functions:
+To test production serving locally:
 
 ```bash
 npm run build
+npm start
 ```
 
-Seed test users (admin + student) and remove all others in Firebase Auth:
+Production cookies require HTTPS (including correct trusted proxy configuration); development cookies support localhost HTTP. The server listens on port 5000.
+
+## Verified and blocked
+
+Day 1 checks used local PostgreSQL and local MongoDB only; no production data was touched.
+
+- The web lint, TypeScript check, Vitest suite and production build pass. Functions compile with `cd functions && npm ci && npm run build`.
+- The runtime smoke test checks development and production startup, SPA fallback, login validation, cookie flags, session persistence and logout against a disposable database.
+- Chromium sign-in and all eight dashboard routes load without page errors. Empty queues render, the map shows seeded locations, and reports show the unconfigured StarRez state. External StarRez integration, Firebase delivery and a deployed URL are not verified.
+- StarRez reports require an authorized instance URL and account. Current code stores the login password in the session for forwarding to StarRez; this and broad role access need a security review before production.
+- Default/demo users and development signing-key fallbacks in existing code are production blockers. Do not expose this application as a real emergency service on this evidence.
+
+## Checks and CI
 
 ```bash
-cd functions
-GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json npm run seed:test-users
+npm run ci
+# Requires a disposable PostgreSQL database; initializes/seeds tables and temporarily creates a test user.
+DATABASE_URL=postgresql://postgres@localhost:5432/postgres npm run test:smoke
+cd functions && npm ci && npm run build
 ```
 
-Seeded users:
+GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a disposable PostgreSQL service. Vitest currently includes only the original example test; the runtime smoke test supplies meaningful coverage for the Day 1 fixes. Functions have a build check, not a validated integration suite.
 
-- `amartyakarmakar@gmail.com` / `password` with role `admin`
-- `162478k@acadiau.ca` / `password` with role `student`
+## Proposed FastAPI / MongoDB / Expo stack (PR #1)
 
-## 3) Firebase project setup
+`backend/` and the student Expo app `frontend/` exist only in [PR #1](https://github.com/Amartya2001-droid/campus-safety-hub/pull/1), not on `main`. That PR adds 36 files and is substantially broader than its dependency-fix title. It has not been merged.
 
-Login and pick your project:
+The proposed backend started locally with its runtime dependencies installed separately. Its existing `backend_test.py` script passed 28/28 checks when redirected to a disposable local MongoDB server. This does **not** establish a reproducible full install: `pip install -r backend/requirements.txt` fails because `emergentintegrations==0.1.0` is unavailable from the configured index. `pytest` in `backend/` collects no tests.
 
-```bash
-firebase login
-firebase use dev
-```
+Backend configuration actually uses `MONGO_URL`, optional `DB_NAME` (default `acadia_safe`), and `SECRET_KEY` (not the `JWT_SECRET_KEY` named in PR #1's README). Never use its hardcoded fallback signing key. Firebase bridging additionally requires an authorized `FIREBASE_SERVICE_ACCOUNT_JSON`; that integration was not tested.
 
-Deploy Firestore rules/indexes + Functions:
+The backend API test script hardcodes an external preview URL. For Day 1 it was imported and `BASE_URL` overridden to localhost, avoiding writes to that external service. The script does not exit nonzero on failed checks, so it is not yet a reliable CI gate. See the PR review for dependency findings and merge blockers.
 
-```bash
-firebase deploy --only firestore,functions
-```
+## Firebase files
 
-Production deploy:
+Optional Firebase client values are listed as empty entries in `.env.example`, `.env.development.example` and `.env.production.example`. Supply authorized values privately; do not invent them. The Functions source is in `functions/src`. Firestore rules/indexes and emulator settings are included. Firebase Hosting deployment is not configured or verified by these files. Avoid running the existing seed script against a real project: it deletes users outside its seed list.
 
-```bash
-firebase use prod
-firebase deploy --only firestore,functions
-```
+## Agent workflow and daily log
 
-## 4) Local emulators (optional)
-
-From repo root:
-
-```bash
-firebase emulators:start
-```
-
-## 5) Production readiness - Week 1 baseline
-
-Security hardening shipped in this repository:
-
-- Firestore schema validation and immutable field checks in `firestore.rules`.
-- Callable functions require Authentication and App Check in `functions/src/index.ts`.
-- Node runtime pinned to LTS with `.nvmrc` and `package.json` engine constraints.
-
-Observability baseline:
-
-- Structured client logs and global unhandled error capture in `src/lib/observability.ts`.
-- Structured function logs in callable entrypoints.
-
-CI baseline:
-
-- GitHub Actions workflow at `.github/workflows/ci.yml`.
-- Web checks: lint + test + build.
-- Functions checks: lint + build.
+Follow [AGENTS.md](AGENTS.md). Issues are disabled, so the daily log is posted as a PR conversation comment titled **10-day agent program — daily log**. No merge or deployment is implied by passing local checks.
