@@ -42,7 +42,7 @@ const Index = () => {
 
   const alerts = Array.isArray(alertsData) ? alertsData : [];
   const escorts = Array.isArray(escortsData) ? escortsData : [];
-  const activeAlerts = alerts.filter((a: any) => a.status !== "resolved");
+  const activeAlerts = alerts.filter((a) => a.status !== "resolved");
 
   return (
     <DashboardLayout title="Dashboard" subtitle="Security Operations Overview">
@@ -108,7 +108,7 @@ const Index = () => {
                 No active SOS alerts
               </div>
             ) : (
-              activeAlerts.map((alert: any) => (
+              activeAlerts.map((alert) => (
                 <div key={alert.id} className="p-4 hover:bg-accent/30 transition-colors" data-testid={`card-alert-${alert.id}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
@@ -164,7 +164,7 @@ const Index = () => {
                   No escort requests
                 </div>
               ) : (
-                escorts.slice(0, 3).map((escort: any) => (
+                escorts.slice(0, 3).map((escort) => (
                   <div key={escort.id} className="p-3 hover:bg-accent/30 transition-colors" data-testid={`card-escort-${escort.id}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">

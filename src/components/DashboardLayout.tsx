@@ -93,7 +93,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
                       </div>
                     ) : (
                       <div className="divide-y divide-border">
-                        {notificationList.slice(0, 20).map((n: any) => (
+                        {notificationList.slice(0, 20).map((n) => (
                           <div
                             key={n.id}
                             className={`p-3 text-sm ${!n.read ? "bg-accent/30" : ""}`}

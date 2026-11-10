@@ -1,3 +1,4 @@
+import type { PatrolSession } from "../../server/db";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -89,7 +90,7 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
   });
 
   const checkinList = Array.isArray(checkins) ? checkins : [];
-  const openCheckin = checkinList.find((c: any) => !c.departure_at);
+  const openCheckin = checkinList.find((c) => !c.departure_at);
 
   const handleCheckin = async () => {
     if (!residence.trim()) return;
@@ -101,8 +102,8 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
       setResidence("");
       queryClient.invalidateQueries({ queryKey: ["/api/patrol-sessions", sessionId, "checkins"] });
       toast({ title: "Checked in", description: `Arrived at ${residence.trim()}` });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     }
   };
 
@@ -111,8 +112,8 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
       await apiRequest(`/api/patrol-checkins/${checkinId}/depart`, { method: "PATCH" });
       queryClient.invalidateQueries({ queryKey: ["/api/patrol-sessions", sessionId, "checkins"] });
       toast({ title: "Departed", description: "Departure recorded" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     }
   };
 
@@ -147,7 +148,7 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
         <p className="text-sm text-muted-foreground py-2">No check-ins yet</p>
       ) : (
         <div className="space-y-2">
-          {checkinList.map((c: any) => {
+          {checkinList.map((c) => {
             const arrival = new Date(c.arrival_at).getTime();
             const departure = c.departure_at ? new Date(c.departure_at).getTime() : null;
             const duration = departure ? departure - arrival : null;
@@ -197,7 +198,7 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
   );
 }
 
-function SessionCard({ session, isAdmin }: { session: any; isAdmin: boolean }) {
+function SessionCard({ session, isAdmin }: { session: Omit<PatrolSession, "status"> & { status: React.ComponentProps<typeof StatusBadge>["status"] }; isAdmin: boolean }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -212,8 +213,8 @@ function SessionCard({ session, isAdmin }: { session: any; isAdmin: boolean }) {
       await apiRequest(`/api/patrol-sessions/${session.id}/accept`, { method: "PATCH" });
       queryClient.invalidateQueries({ queryKey: ["/api/patrol-sessions"] });
       toast({ title: "Patrol accepted", description: "Your patrol shift has started. You have 5 hours." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     }
   };
 
@@ -222,8 +223,8 @@ function SessionCard({ session, isAdmin }: { session: any; isAdmin: boolean }) {
       await apiRequest(`/api/patrol-sessions/${session.id}/decline`, { method: "PATCH" });
       queryClient.invalidateQueries({ queryKey: ["/api/patrol-sessions"] });
       toast({ title: "Patrol declined" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     }
   };
 
@@ -234,8 +235,8 @@ function SessionCard({ session, isAdmin }: { session: any; isAdmin: boolean }) {
       queryClient.invalidateQueries({ queryKey: ["/api/patrol-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Patrol ended", description: "Your patrol shift has been completed." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     } finally {
       setEnding(false);
     }
@@ -327,11 +328,11 @@ export default function Patrols() {
   });
 
   const sessionList = Array.isArray(sessions) ? sessions : [];
-  const studentUsers = Array.isArray(users) ? users.filter((u: any) => u.role === "student") : [];
+  const studentUsers = Array.isArray(users) ? users.filter((u) => u.role === "student") : [];
 
-  const activeSessions = sessionList.filter((s: any) => s.status === "active");
-  const pendingSessions = sessionList.filter((s: any) => s.status === "pending");
-  const pastSessions = sessionList.filter((s: any) => ["completed", "expired", "declined"].includes(s.status));
+  const activeSessions = sessionList.filter((s) => s.status === "active");
+  const pendingSessions = sessionList.filter((s) => s.status === "pending");
+  const pastSessions = sessionList.filter((s) => ["completed", "expired", "declined"].includes(s.status));
 
   const handleCreate = async () => {
     if (!studentId) {
@@ -351,8 +352,8 @@ export default function Patrols() {
       setNotes("");
       queryClient.invalidateQueries({ queryKey: ["/api/patrol-sessions"] });
       toast({ title: "Patrol assigned", description: "Student has been notified of their patrol assignment." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     } finally {
       setCreating(false);
     }
@@ -369,7 +370,7 @@ export default function Patrols() {
                 Pending Assignments ({pendingSessions.length})
               </h2>
               <div className="space-y-3">
-                {pendingSessions.map((s: any) => (
+                {pendingSessions.map((s) => (
                   <SessionCard key={s.id} session={s} isAdmin={isAdmin} />
                 ))}
               </div>
@@ -383,7 +384,7 @@ export default function Patrols() {
                 Active Patrols ({activeSessions.length})
               </h2>
               <div className="space-y-3">
-                {activeSessions.map((s: any) => (
+                {activeSessions.map((s) => (
                   <SessionCard key={s.id} session={s} isAdmin={isAdmin} />
                 ))}
               </div>
@@ -412,7 +413,7 @@ export default function Patrols() {
                 Past Sessions ({pastSessions.length})
               </h2>
               <div className="space-y-3">
-                {pastSessions.map((s: any) => (
+                {pastSessions.map((s) => (
                   <SessionCard key={s.id} session={s} isAdmin={isAdmin} />
                 ))}
               </div>
@@ -437,7 +438,7 @@ export default function Patrols() {
                       <SelectValue placeholder="Select a student..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {studentUsers.map((u: any) => (
+                      {studentUsers.map((u) => (
                         <SelectItem key={u.id} value={u.id.toString()} data-testid={`option-student-${u.id}`}>
                           {u.name} ({u.email})
                         </SelectItem>
@@ -488,13 +489,13 @@ export default function Patrols() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Completed</span>
                 <span className="font-medium" data-testid="text-completed-patrols">
-                  {pastSessions.filter((s: any) => s.status === "completed").length}
+                  {pastSessions.filter((s) => s.status === "completed").length}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Expired</span>
                 <span className="font-medium" data-testid="text-expired-patrols">
-                  {pastSessions.filter((s: any) => s.status === "expired").length}
+                  {pastSessions.filter((s) => s.status === "expired").length}
                 </span>
               </div>
             </CardContent>

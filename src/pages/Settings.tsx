@@ -54,8 +54,8 @@ const SettingsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "StarRez configuration saved" });
       setTestResult(null);
-    } catch (error: any) {
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Save failed", description: (error instanceof Error ? error.message : "Request failed"), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -72,9 +72,9 @@ const SettingsPage = () => {
       } else {
         toast({ title: "Connection failed", description: result?.message || "Unknown error", variant: "destructive" });
       }
-    } catch (error: any) {
-      setTestResult({ success: false, message: error.message });
-      toast({ title: "Test failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      setTestResult({ success: false, message: (error instanceof Error ? error.message : "Request failed") });
+      toast({ title: "Test failed", description: (error instanceof Error ? error.message : "Request failed"), variant: "destructive" });
     } finally {
       setTesting(false);
     }

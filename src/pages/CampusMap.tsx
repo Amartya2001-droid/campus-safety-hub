@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiRequest, formatTimeAgo } from "@/lib/api";
@@ -59,7 +60,7 @@ const TYPE_LABELS: Record<string, string> = {
   parking: "Parking",
 };
 
-const TYPE_ICONS: Record<string, any> = {
+const TYPE_ICONS: Record<string, LucideIcon> = {
   blue_phone: Phone,
   safe_zone: Shield,
   aed: Heart,
@@ -148,7 +149,7 @@ const CampusMap = () => {
   const liveData = liveDataRaw && typeof liveDataRaw === "object" && !Array.isArray(liveDataRaw) ? liveDataRaw as { active_alerts: LiveAlert[]; active_patrols: LivePatrol[] } : null;
 
   const addMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/campus-locations", { method: "POST", body: JSON.stringify(data) }),
+    mutationFn: (data: { name: string; type: string; lat: number; lng: number; description: string }) => apiRequest("/api/campus-locations", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/campus-locations"] });
       setShowAddForm(false);
@@ -265,7 +266,7 @@ const CampusMap = () => {
                     <div className="font-medium">{a.student_name}</div>
                     <div className="text-muted-foreground">{a.location}</div>
                     <div className="flex items-center justify-between mt-1">
-                      <StatusBadge status={a.status as any} />
+                      <StatusBadge status={a.status as React.ComponentProps<typeof StatusBadge>["status"]} />
                       <span className="text-muted-foreground">{formatTimeAgo(a.created_at)}</span>
                     </div>
                   </div>
