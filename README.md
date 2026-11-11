@@ -4,7 +4,7 @@ The current `main` application is a React/Vite dashboard with an Express API and
 
 **Live status:** not live yet — blocked by an unconfirmed deployment URL, production configuration and security review. No live deployment has been verified. Local development runs at http://localhost:5000.
 
-The commands and passing CI/smoke results below require the companion [runtime and CI fix PR](https://github.com/Amartya2001-droid/campus-safety-hub/pull/2); they describe that tested candidate. Until it merges, `main` still has the local startup/cookie/production-route defects and lint errors identified during triage.
+The [runtime and CI fixes (PR #2)](https://github.com/Amartya2001-droid/campus-safety-hub/pull/2) and [agent instructions/status documentation (PR #3)](https://github.com/Amartya2001-droid/campus-safety-hub/pull/3) are merged. CI passed on current main (`7dde158`): [post-merge run](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/42916033687).
 
 ## Run locally
 
@@ -65,4 +65,4 @@ Optional Firebase client values are listed as empty entries in `.env.example`, `
 
 ## Agent workflow and daily log
 
-Follow [AGENTS.md](AGENTS.md). Issues are disabled, so the daily log is posted as a PR conversation comment titled **10-day agent program — daily log**. No merge or deployment is implied by passing local checks.
+Follow [AGENTS.md](AGENTS.md). Issues are disabled, so [DAILY-LOG.md](DAILY-LOG.md) is the daily log, maintained through pull requests. No merge or deployment is implied by passing local checks.
