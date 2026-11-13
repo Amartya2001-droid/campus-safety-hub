@@ -1,3 +1,4 @@
+import { campusBackend } from "./campus-backend.js";
 import express from "express";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
@@ -34,6 +35,7 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
 }
 
 async function start() {
+  const mapBackend = campusBackend(findUserById);
   await initDb();
 
   const app = express();
@@ -415,6 +417,10 @@ async function start() {
     return res.json(checkin);
   });
 
+  if (mapBackend) {
+    app.all(["/api/campus-locations", "/api/campus-locations/:id"], requireAuth, mapBackend);
+  }
+
   app.get("/api/campus-locations", requireAuth, async (_req, res) => {
     const locations = await getCampusLocations();
     return res.json(locations);
@@ -519,4 +525,7 @@ async function start() {
   });
 }
 
-start().catch(console.error);
+start().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
