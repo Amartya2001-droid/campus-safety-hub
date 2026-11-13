@@ -42,19 +42,39 @@ Live status: not live yet — blocked by unconfirmed deployment URL, production 
 
 ## Day 3 — campus-safety-hub
 
-Date: Nov 12–13, 2026. Decisions recorded by Scipio Nov 13; no Day 3 report was posted by the agent — the report below is the reviewer's record, not the agent's.
+Date: Nov 12–13, 2026. Retroactive agent report completed Nov 13 during Day 4. Reviewer merge decisions were already recorded in [PR #7](https://github.com/Amartya2001-droid/campus-safety-hub/pull/7); this entry supplies the missing agent report and preserves those decisions.
 
 Did:
-- Clean FastAPI campus-map backend delivered as a fresh slice (no code from held PR #1): [PR #5](https://github.com/Amartya2001-droid/campus-safety-hub/pull/5), merged. Validated payloads/coordinates, role-restricted writes, PostgreSQL persistence in the existing table, short-lived HS256 server-to-server assertions. FastAPI and Express both refuse startup without a privately supplied SECRET_KEY (32+ characters, known fallbacks rejected) and DATABASE_URL. 19 pytest tests plus 3 Node gateway tests, CI green.
-- Java/Maven/Selenium E2E suite for the rebuilt app: [PR #6](https://github.com/Amartya2001-droid/campus-safety-hub/pull/6), merged (retargeted to main after PR #5). 13 real browser cases (login, session persistence, logout, all eight SPA routes, campus-map creation through FastAPI). One "checks" run failed on a flaky production smoke step (401 on /api/me) and passed on re-run; the failure was a runner flake, not a code defect.
-
-Decisions (Scipio, Nov 13): MERGED PR #5 and PR #6. The clean rebuild is the authorised scope from Nov 11; the held PR #1 is still NOT merged and its MongoDB/Expo code is not part of this slice. No deployment is claimed.
+- Delivered the clean FastAPI campus-map slice from latest main: [PR #5](https://github.com/Amartya2001-droid/campus-safety-hub/pull/5), merged by the reviewer. Existing PostgreSQL persistence, validated location CRUD, role-restricted writes, signed short-lived gateway assertions and fail-closed backend SECRET_KEY configuration; no MongoDB/Expo code from held PR #1. Fresh Python 3.12 requirements install and pip check passed; every installed runtime/test pin had an empty current PyPI vulnerability list at audit time. 19 pytest cases, 3 Node gateway tests and real development/production integration smoke checks passed. These are point-in-time advisory findings, not a guarantee against later/unknown vulnerabilities.
+- Delivered the separate Java 21/Maven/Selenium/JUnit suite and headless CI: [PR #6](https://github.com/Amartya2001-droid/campus-safety-hub/pull/6), merged by the reviewer after retargeting to main. All 13 local browser cases passed against real production Express + FastAPI + PostgreSQL over temporary local HTTPS: valid/invalid login, session persistence, logout, eight SPA routes and campus-map creation. APP_BASE_URL defaults to http://localhost:5000; fixtures/keys are generated at runtime and cleaned up. README and E2E setup documentation were included.
+- The reviewer merged #5/#6 and recorded that held PR #1 must remain unmerged: [PR #7](https://github.com/Amartya2001-droid/campus-safety-hub/pull/7). The agent performed no merge or deployment. The production smoke failure passed on re-run, but that did not establish its cause or resolve it; Day 4 subsequently reproduced the session response-ordering defect in [PR #8](https://github.com/Amartya2001-droid/campus-safety-hub/pull/8).
 
 Blocked on:
-- Amartya: privately provision SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve HTTPS/private-network topology; remove demo accounts; production security review before any deployment. No deployment was performed.
-- The agent's Day 3 report is missing — the Day 3 brief asked for it in this file.
+- Amartya: privately provision SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve HTTPS/private-network topology; remove demo accounts and complete production security review before deployment. No third-party API key was needed for this slice.
+- The unresolved intermittent production smoke 401 required the Day 4 investigation. The broader API migration remained outside the Day 3 minimal slice.
 
 Will do tomorrow:
-- Follow the Day 4 brief when posted; verify the merged backend + E2E suite on latest main.
+- Reproduce and fix the production session smoke failure with a regression test.
+- Continue the clean backend through the next bounded dashboard feature slice, separately reviewed.
 
-Live status: not live yet — blocked by unconfirmed deployment URL, production configuration and security review.
+Live status: not live yet — blocked by production configuration/security review and an approved deployment URL. Only disposable local test stacks were run.
+
+## Day 4 — campus-safety-hub
+
+Date: Nov 13, 2026. Session race first, then the next clean backend slice.
+
+Did:
+- Reproduced and fixed the production login/session race in [PR #8](https://github.com/Amartya2001-droid/campus-safety-hub/pull/8). Express-session could publish login headers before PostgreSQL committed the session; an immediate /api/me then saw 401. Login now explicitly waits for save completion, and a failed save returns 503 without a cookie. A real PostgreSQL regression injects delayed/rejected session writes in an isolated schema: it failed before the fix and passed afterward. The regression and original smoke each passed five consecutive local runs. Web checks passed. [GitHub checks](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43523535893) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43523535920) are green; no retry/delay was added to hide the application defect.
+- Continued the clean rebuild with the bounded SOS slice in [PR #9](https://github.com/Amartya2001-droid/campus-safety-hub/pull/9), stacked on #8. FastAPI handles list/create/status through the existing session gateway and PostgreSQL tables. Non-staff see their own alerts and use database-derived identity; only staff change status. Validated transitions, row locking, retry-safe status updates and atomic notification writes prevent inconsistent states. Global notification messages omit student identity/location. The existing dashboard uses the signed-in staff name for Assign, hides staff actions for non-staff, and displays failures. No new identity system, dependency, mobile app or external dispatch integration was added.
+- Verified [PR #9](https://github.com/Amartya2001-droid/campus-safety-hub/pull/9): 36 pytest cases, 3 gateway tests, web lint/typecheck/Vitest/build, real development/production SOS/map/session smoke checks, and all 14 production HTTPS Selenium cases passed. The new browser case submits an SOS fixture, assigns it, moves it en route, resolves it and confirms persistence after refresh. Tests cover owner isolation, role/identity validation, invalid inputs/transitions, notification failure rollback and competing updates. [GitHub checks](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43524566017) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43524566034) are green. README/backend/E2E documentation describes setup, behavior and slice boundaries.
+- Supplied the missing retroactive Day 3 agent report above using the delivered [PR #5](https://github.com/Amartya2001-droid/campus-safety-hub/pull/5), [PR #6](https://github.com/Amartya2001-droid/campus-safety-hub/pull/6) and the reviewer decisions in [PR #7](https://github.com/Amartya2001-droid/campus-safety-hub/pull/7). Issues remain disabled, so DAILY-LOG.md remains the reporting destination through a separate log PR. The agent merged nothing, left PR #1 held and untouched, committed no keys, and performed no deployment. Temporary local app processes and test PostgreSQL were stopped after verification.
+
+Blocked on:
+- Amartya review/merge of #8 first, then retarget/review #9 against main; review of this log-only PR. All other Express routes remain outside the SOS slice, including legacy endpoints that still need a broader security review.
+- Production provisioning remains Amartya's decision: privately supply SECRET_KEY, DATABASE_URL and SESSION_SECRET, choose approved HTTPS/private-network topology and FASTAPI_URL, remove demo credentials, approve production security review and a deployment URL. No third-party API key is required for the delivered slices. Never post key values in reports or PRs.
+
+Will do tomorrow:
+- Address review feedback and verify the approved merges on main, including the deterministic session regression and browser suite.
+- Agree the next bounded dashboard/backend slice before expanding the migration; retain the production provisioning boundary.
+
+Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. All verification used disposable local/CI data.
