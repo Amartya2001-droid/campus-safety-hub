@@ -39,3 +39,22 @@ Will do tomorrow:
 - Check review feedback on PR #4 and clarify deployment prerequisites without deploying an unreviewed emergency service.
 
 Live status: not live yet — blocked by unconfirmed deployment URL, production configuration and security review.
+
+## Day 3 — campus-safety-hub
+
+Date: Nov 12–13, 2026. Decisions recorded by Scipio Nov 13; no Day 3 report was posted by the agent — the report below is the reviewer's record, not the agent's.
+
+Did:
+- Clean FastAPI campus-map backend delivered as a fresh slice (no code from held PR #1): [PR #5](https://github.com/Amartya2001-droid/campus-safety-hub/pull/5), merged. Validated payloads/coordinates, role-restricted writes, PostgreSQL persistence in the existing table, short-lived HS256 server-to-server assertions. FastAPI and Express both refuse startup without a privately supplied SECRET_KEY (32+ characters, known fallbacks rejected) and DATABASE_URL. 19 pytest tests plus 3 Node gateway tests, CI green.
+- Java/Maven/Selenium E2E suite for the rebuilt app: [PR #6](https://github.com/Amartya2001-droid/campus-safety-hub/pull/6), merged (retargeted to main after PR #5). 13 real browser cases (login, session persistence, logout, all eight SPA routes, campus-map creation through FastAPI). One "checks" run failed on a flaky production smoke step (401 on /api/me) and passed on re-run; the failure was a runner flake, not a code defect.
+
+Decisions (Scipio, Nov 13): MERGED PR #5 and PR #6. The clean rebuild is the authorised scope from Nov 11; the held PR #1 is still NOT merged and its MongoDB/Expo code is not part of this slice. No deployment is claimed.
+
+Blocked on:
+- Amartya: privately provision SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve HTTPS/private-network topology; remove demo accounts; production security review before any deployment. No deployment was performed.
+- The agent's Day 3 report is missing — the Day 3 brief asked for it in this file.
+
+Will do tomorrow:
+- Follow the Day 4 brief when posted; verify the merged backend + E2E suite on latest main.
+
+Live status: not live yet — blocked by unconfirmed deployment URL, production configuration and security review.
