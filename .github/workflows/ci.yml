@@ -36,6 +36,7 @@ jobs:
       - run: backend/.venv/bin/python -m pytest backend/tests -q
         env:
           TEST_DATABASE_URL: postgresql://postgres@localhost:5432/postgres
+      - run: node --import tsx --test scripts/campus-backend.test.mjs
       - run: npm run test:smoke
       - run: node scripts/backend-smoke.mjs
         env:
