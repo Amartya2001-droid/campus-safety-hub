@@ -1,4 +1,4 @@
-"""Campus map service. Express authenticates users; this service authorizes signed actors."""
+"""Campus safety service. Express authenticates users; this service authorizes signed actors."""
 
 import os
 from contextlib import asynccontextmanager
@@ -75,12 +75,16 @@ def create_app() -> FastAPI:
             conn.execute(SCHEMA)
         yield
 
-    app = FastAPI(title="Acadia Safe Campus Map API", lifespan=lifespan)
+    app = FastAPI(title="Acadia Safe Dashboard API", lifespan=lifespan)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_request, _error):
         # Preserve the existing frontend's error contract; never echo input/token values.
-        return JSONResponse(status_code=422, content={"message": "Invalid location data"})
+        return JSONResponse(status_code=422, content={"message": "Invalid request data"})
+
+    @app.exception_handler(psycopg.Error)
+    async def database_error(_request, _error):
+        return JSONResponse(status_code=503, content={"message": "Safety data temporarily unavailable"})
 
     @app.exception_handler(HTTPException)
     async def http_error(_request, error):
@@ -111,7 +115,7 @@ def create_app() -> FastAPI:
     def health():
         with connect() as conn:
             conn.execute("SELECT 1")
-        return {"status": "ok", "service": "campus-map"}
+        return {"status": "ok", "service": "campus-safety"}
 
     @app.get("/api/campus-locations")
     def locations(_user: Annotated[Actor, Depends(actor)]):
@@ -157,4 +161,6 @@ def create_app() -> FastAPI:
             raise HTTPException(404, "Location not found")
         return {"success": True}
 
+    from backend.sos import register_sos_routes
+    register_sos_routes(app, connect, actor)
     return app

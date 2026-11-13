@@ -53,13 +53,13 @@ cd functions && npm ci && npm run build
 
 GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a disposable PostgreSQL service. Vitest currently includes only the original example test; the runtime smoke test supplies meaningful coverage for the Day 1 fixes. Functions have a build check, not a validated integration suite.
 
-## Minimal FastAPI campus-map service
+## FastAPI campus-map and SOS service
 
-A clean [FastAPI service](backend/README.md) now implements campus-location CRUD against the existing PostgreSQL table, with validated coordinates/payloads and role authorization. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes to use it through the existing Campus Map UI. The service refuses startup without a suitable key. It does not replace login or the rest of Express. See the backend README for installation, trust boundaries, tests and exact configuration. No external API key is needed; no deployment is claimed.
+A clean [FastAPI service](backend/README.md) implements campus-location CRUD plus SOS alert list/create/status operations against the existing PostgreSQL tables, with validated payloads, role authorization and transactional SOS notifications. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes to use it through the existing Campus Map and SOS Alerts UIs. The service refuses startup without a suitable key. It does not replace login or the rest of Express. See the backend README for installation, trust boundaries, tests and exact configuration. No external API key is needed; no deployment is claimed.
 
 ## Browser end-to-end tests
 
-The separate [Java/Maven/Selenium suite](e2e/README.md) runs headlessly against the rebuilt app. It covers valid/invalid login, session persistence, logout, all eight direct SPA routes and a campus-map write through FastAPI. `APP_BASE_URL` defaults to `http://localhost:5000`; account credentials come from environment variables. Its dedicated CI workflow uses disposable PostgreSQL and a local HTTPS production stack. See the suite README for prerequisites, fixture cleanup and commands.
+The separate [Java/Maven/Selenium suite](e2e/README.md) runs headlessly against the rebuilt app. It covers valid/invalid login, session persistence, logout, all eight direct SPA routes, a campus-map write, and the SOS Assign → En Route → Resolve workflow through FastAPI. `APP_BASE_URL` defaults to `http://localhost:5000`; account credentials come from environment variables. Its dedicated CI workflow uses disposable PostgreSQL and a local HTTPS production stack. See the suite README for prerequisites, fixture cleanup and commands.
 
 ## Held FastAPI / MongoDB / Expo proposal (PR #1)
 

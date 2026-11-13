@@ -68,6 +68,6 @@ test('backend outage or invalid upstream response fails closed without leaking d
     const res = response();
     await handler({ session: { userId: 12 }, path: '/api/campus-locations', method: 'GET' }, res);
     assert.equal(res.code, 502);
-    assert.deepEqual(res.body, { message: 'Campus map service unavailable' });
+    assert.deepEqual(res.body, { message: 'Campus safety service unavailable' });
   }
 });
