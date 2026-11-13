@@ -1,3 +1,5 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatTimeAgo, apiRequest, apiFetch } from "@/lib/api";
@@ -15,8 +17,11 @@ import {
 } from "@/components/ui/table";
 
 const SOSAlerts = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isStaff = user?.role === "admin" || user?.role === "safety_official";
   const queryClient = useQueryClient();
-  const { data: alertsData, isLoading } = useQuery({
+  const { data: alertsData, isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/sos-alerts"],
     queryFn: () => apiFetch("/api/sos-alerts"),
     refetchInterval: 10000,
@@ -30,6 +35,7 @@ const SOSAlerts = () => {
         method: "PATCH",
         body: JSON.stringify({ status, assigned_officer }),
       }),
+    onError: (error: Error) => toast({ title: "Unable to update alert", description: error.message, variant: "destructive" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sos-alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -54,7 +60,9 @@ const SOSAlerts = () => {
       )}
 
       <div className="glass-card overflow-hidden">
-        {isLoading ? (
+        {isError ? (
+          <div role="alert" className="p-6">Unable to load SOS alerts. <Button onClick={() => refetch()}>Retry</Button></div>
+        ) : isLoading ? (
           <div className="p-4 space-y-3">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
           </div>
@@ -118,32 +126,37 @@ const SOSAlerts = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {alert.status === "new" && (
+                      {isStaff && alert.status === "new" && (
                         <Button
                           variant="ghost"
+                          disabled={updateStatus.isPending}
                           size="sm"
                           className="text-xs"
                           data-testid={`button-assign-${alert.id}`}
-                          onClick={() => updateStatus.mutate({ id: alert.id, status: "assigned", assigned_officer: "Officer on duty" })}
+                          onClick={() => updateStatus.mutate({ id: alert.id, status: "assigned", assigned_officer: user.name })}
                         >
                           <User className="h-3.5 w-3.5 mr-1" /> Assign
                         </Button>
                       )}
-                      {alert.status === "assigned" && (
+                      {isStaff && alert.status === "assigned" && (
                         <Button
                           variant="ghost"
+                          disabled={updateStatus.isPending}
                           size="sm"
                           className="text-xs"
+                          data-testid={`button-en-route-${alert.id}`}
                           onClick={() => updateStatus.mutate({ id: alert.id, status: "en_route" })}
                         >
                           En Route
                         </Button>
                       )}
-                      {(alert.status === "en_route" || alert.status === "on_scene") && (
+                      {isStaff && (alert.status === "en_route" || alert.status === "on_scene") && (
                         <Button
                           variant="ghost"
+                          disabled={updateStatus.isPending}
                           size="sm"
                           className="text-xs text-success"
+                          data-testid={`button-resolve-${alert.id}`}
                           onClick={() => updateStatus.mutate({ id: alert.id, status: "resolved" })}
                         >
                           Resolve
