@@ -1,0 +1,56 @@
+name: Selenium E2E
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: e2e/pom.xml
+      - run: npm ci
+      - run: npm run build
+      - run: python -m venv backend/.venv
+      - run: backend/.venv/bin/python -m pip install -r backend/requirements.txt
+      # GitHub's hosted image includes Chrome and a matching chromedriver.
+      - name: Locate browser and matching driver
+        run: |
+          echo "CHROME_BINARY=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          echo "CHROMEDRIVER_PATH=$(command -v chromedriver)" >> "$GITHUB_ENV"
+          google-chrome --version
+          chromedriver --version
+      - name: Run headless Selenium against Express + FastAPI + PostgreSQL
+        run: node e2e/run-local.mjs
+        env:
+          PYTHON: backend/.venv/bin/python
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selenium-test-results
+          path: e2e/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -53,6 +53,10 @@ GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a dispos
 
 A clean [FastAPI service](backend/README.md) now implements campus-location CRUD against the existing PostgreSQL table, with validated coordinates/payloads and role authorization. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes to use it through the existing Campus Map UI. The service refuses startup without a suitable key. It does not replace login or the rest of Express. See the backend README for installation, trust boundaries, tests and exact configuration. No external API key is needed; no deployment is claimed.
 
+## Browser end-to-end tests
+
+The separate [Java/Maven/Selenium suite](e2e/README.md) runs headlessly against the rebuilt app. It covers valid/invalid login, session persistence, logout, all eight direct SPA routes and a campus-map write through FastAPI. `APP_BASE_URL` defaults to `http://localhost:5000`; account credentials come from environment variables. Its dedicated CI workflow uses disposable PostgreSQL and a local HTTPS production stack. See the suite README for prerequisites, fixture cleanup and commands.
+
 ## Held FastAPI / MongoDB / Expo proposal (PR #1)
 
 The original MongoDB backend and student Expo app `frontend/` exist only in [PR #1](https://github.com/Amartya2001-droid/campus-safety-hub/pull/1), and are not part of this clean PostgreSQL slice. That PR adds 36 files and is substantially broader than its dependency-fix title. It has not been merged.
