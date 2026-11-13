@@ -86,7 +86,16 @@ async function start() {
     req.session.userId = user.id;
     req.session.starrezPassword = password;
     const { password_hash, ...safeUser } = user;
-    return res.json(safeUser);
+    // Do not publish a cookie/success header until PostgreSQL has committed it.
+    req.session.save((error) => {
+      if (error) {
+        req.session.destroy(() => {
+          res.status(503).json({ message: "Unable to establish session" });
+        });
+        return;
+      }
+      res.json(safeUser);
+    });
   });
 
   app.post("/api/logout", (req, res) => {
