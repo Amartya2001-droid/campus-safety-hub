@@ -51,6 +51,30 @@ try {
       const me = await fetch(`${base}/api/me`, { headers });
       assert.equal(me.status, 200);
       assert.equal((await me.json()).id, userId);
+      if (process.env.FASTAPI_URL) {
+        const endpoint = `${base}/api/campus-locations`;
+        assert.equal((await fetch(endpoint)).status, 401);
+        assert.equal((await fetch(endpoint, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Forbidden', type: 'building', lat: 45, lng: -64 }) })).status, 403);
+        await pool.query("UPDATE users SET role='admin' WHERE id=$1", [userId]);
+        const data = { name: `Integration ${randomUUID()}`, type: 'building', lat: 45.087, lng: -64.366, description: 'Disposable integration fixture' };
+        const created = await fetch(endpoint, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        assert.equal(created.status, 201);
+        const location = await created.json();
+        try {
+          const stored = await pool.query('SELECT name FROM campus_locations WHERE id=$1', [location.id]);
+          assert.equal(stored.rows[0].name, data.name, 'FastAPI must use the existing database');
+          const patch = await fetch(`${endpoint}/${location.id}`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ description: null }) });
+          assert.equal(patch.status, 200);
+          assert.equal((await patch.json()).description, null);
+          assert.ok((await (await fetch(endpoint, { headers })).json()).some(row => row.id === location.id));
+          assert.equal((await fetch(`${endpoint}/${location.id}`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: 91 }) })).status, 422);
+          assert.equal((await fetch(`${endpoint}/${location.id}`, { method: 'DELETE', headers })).status, 200);
+        } finally {
+          await pool.query('DELETE FROM campus_locations WHERE id=$1', [location.id]);
+          await pool.query("UPDATE users SET role='student' WHERE id=$1", [userId]);
+        }
+        console.log(`${mode}: FastAPI gateway CRUD, shared persistence, authorization and validation passed`);
+      }
       assert.equal((await fetch(`${base}/api/logout`, { method:'POST', headers })).status, 200);
       assert.equal((await fetch(`${base}/api/me`, { headers })).status, 401);
       console.log(`${mode}: SPA, auth validation, cookie, session persistence and logout passed`);
