@@ -122,6 +122,10 @@ async function start() {
     return res.json(users);
   });
 
+  if (mapBackend) {
+    app.all(["/api/sos-alerts", "/api/sos-alerts/:id/status"], requireAuth, mapBackend);
+  }
+
   app.get("/api/sos-alerts", requireAuth, async (_req, res) => {
     const alerts = await getSOSAlerts();
     return res.json(alerts);

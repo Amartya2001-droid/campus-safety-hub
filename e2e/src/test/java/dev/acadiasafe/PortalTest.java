@@ -215,4 +215,31 @@ class PortalTest {
                 """, id);
         }
     }
+    @Test
+    void sosAlertCanBeAssignedAndResolvedThroughDashboard() {
+        loginSuccessfully();
+        String name = "Selenium SOS " + System.getenv().getOrDefault("E2E_RUN_ID", "standalone") + " " + UUID.randomUUID();
+        Object value = ((JavascriptExecutor) driver).executeAsyncScript("""
+            const name = arguments[0], done = arguments[arguments.length - 1];
+            fetch('/api/sos-alerts', {method:'POST', credentials:'include',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({student_name:name, location:'Disposable browser fixture', lat:45.087, lng:-64.366})})
+              .then(async r => done(r.status === 201 ? (await r.json()).id : -1)).catch(() => done(-1));
+            """, name);
+        long id = ((Number) value).longValue();
+        assertTrue(id > 0, "SOS fixture must be persisted by the enabled FastAPI service");
+        driver.get(baseUrl + "/alerts");
+        heading("SOS Alerts");
+        var row = testId("row-alert-" + id);
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(row, name));
+        driver.findElement(testId("button-assign-" + id)).click();
+        wait.until(ExpectedConditions.elementToBeClickable(testId("button-en-route-" + id))).click();
+        wait.until(ExpectedConditions.elementToBeClickable(testId("button-resolve-" + id))).click();
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(row, "RESOLVED"));
+        driver.navigate().refresh();
+        heading("SOS Alerts");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(row, "RESOLVED"));
+        assertTrue(driver.findElements(testId("button-assign-" + id)).isEmpty());
+    }
+
 }

@@ -73,6 +73,31 @@ try {
           await pool.query('DELETE FROM campus_locations WHERE id=$1', [location.id]);
           await pool.query("UPDATE users SET role='student' WHERE id=$1", [userId]);
         }
+        const sosEndpoint = `${base}/api/sos-alerts`;
+        const sosBody = { student_name: 'Untrusted supplied name', location: `Smoke ${randomUUID()}`, lat: 45.087, lng: -64.366 };
+        const submitted = await fetch(sosEndpoint, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(sosBody) });
+        assert.equal(submitted.status, 201);
+        const alert = await submitted.json();
+        try {
+          assert.equal(alert.student_name, 'Smoke Test', 'Non-staff identity comes from the authenticated database user');
+          assert.equal(alert.created_by, userId);
+          assert.equal((await fetch(`${sosEndpoint}/${alert.id}/status`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'resolved' }) })).status, 403);
+          await pool.query("UPDATE users SET role='admin' WHERE id=$1", [userId]);
+          assert.ok((await (await fetch(sosEndpoint, { headers })).json()).some(row => row.id === alert.id));
+          for (const status of ['assigned', 'en_route', 'resolved']) {
+            const changed = await fetch(`${sosEndpoint}/${alert.id}/status`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ status, ...(status === 'assigned' ? { assigned_officer: 'Smoke Test' } : {}) }) });
+            assert.equal(changed.status, 200);
+          }
+          assert.equal((await pool.query('SELECT status FROM sos_alerts WHERE id=$1', [alert.id])).rows[0].status, 'resolved');
+          assert.equal((await pool.query("SELECT count(*)::int AS count FROM notifications WHERE reference_type='sos_alert' AND reference_id=$1", [alert.id])).rows[0].count, 4);
+          const map = await (await fetch(`${base}/api/map/live-data`, { headers })).json();
+          assert.ok(!map.active_alerts.some(row => row.id === alert.id));
+        } finally {
+          await pool.query("DELETE FROM notifications WHERE reference_type='sos_alert' AND reference_id=$1", [alert.id]);
+          await pool.query('DELETE FROM sos_alerts WHERE id=$1', [alert.id]);
+          await pool.query("UPDATE users SET role='student' WHERE id=$1", [userId]);
+        }
+        console.log(`${mode}: SOS submission, identity, staff workflow, notifications and live-map consistency passed`);
         console.log(`${mode}: FastAPI gateway CRUD, shared persistence, authorization and validation passed`);
       }
       assert.equal((await fetch(`${base}/api/logout`, { method:'POST', headers })).status, 200);

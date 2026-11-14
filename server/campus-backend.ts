@@ -48,7 +48,7 @@ export function campusBackend(
       res.status(upstream.status).json(await upstream.json());
     } catch {
       // Never fall back to a second writer or expose keys/upstream error details.
-      res.status(502).json({ message: "Campus map service unavailable" });
+      res.status(502).json({ message: "Campus safety service unavailable" });
     }
   };
 }
