@@ -500,6 +500,10 @@ async function start() {
     });
   });
 
+  if (mapBackend) {
+    app.get("/api/dashboard/stats", requireAuth, mapBackend);
+  }
+
   app.get("/api/dashboard/stats", requireAuth, async (_req, res) => {
     const [alerts, escorts, activePatrols] = await Promise.all([
       pool.query("SELECT COUNT(*) as count FROM sos_alerts WHERE status != 'resolved'"),
@@ -508,12 +512,12 @@ async function start() {
     ]);
 
     const config = await getStarrezConfig();
-    const starrezConnected = !!(config && config.base_url);
+    const starrezConfigured = !!config?.base_url.trim();
 
     return res.json({
       active_alerts: parseInt(alerts.rows[0].count),
       pending_escorts: parseInt(escorts.rows[0].count),
-      starrez_connected: starrezConnected,
+      starrez_configured: starrezConfigured,
       active_patrols: activePatrols,
     });
   });

@@ -34,3 +34,20 @@ export const formatTimeAgo = (dateStr: string): string => {
   if (diffHr < 24) return `${diffHr}h ago`;
   return date.toLocaleDateString();
 };
+
+export interface DashboardSummary {
+  active_alerts: number;
+  pending_escorts: number;
+  active_patrols: number;
+  starrez_configured: boolean;
+}
+
+export async function fetchDashboardSummary(): Promise<DashboardSummary> {
+  const data = await apiFetch("/api/dashboard/stats");
+  const counts = [data?.active_alerts, data?.pending_escorts, data?.active_patrols];
+  if (!counts.every(value => Number.isSafeInteger(value) && value >= 0) ||
+      typeof data?.starrez_configured !== "boolean") {
+    throw new Error("Dashboard summary unavailable");
+  }
+  return data;
+}

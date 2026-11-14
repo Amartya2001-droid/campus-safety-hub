@@ -6,6 +6,7 @@ Coverage:
 
 - Valid login through the UI creates an HTTP-only server-session cookie and opens the dashboard.
 - Invalid credentials display the real error and leave the session unauthenticated.
+- Dashboard summary cards match the authenticated API after login and after an SOS is resolved; StarRez indicates configuration, not verified connectivity.
 - Login persists through refresh and direct navigation.
 - Logout invalidates the server session; protected route reload shows login.
 - All eight SPA routes render on direct navigation and refresh, including production fallback.

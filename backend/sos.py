@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 Status = Literal['new', 'assigned', 'en_route', 'on_scene', 'resolved']
-STAFF = {'admin', 'safety_official'}
+from backend.identity import STAFF, identity
 TRANSITIONS = {
     'new': {'assigned', 'resolved'}, 'assigned': {'en_route', 'resolved'},
     'en_route': {'on_scene', 'resolved'}, 'on_scene': {'resolved'}, 'resolved': set(),
@@ -38,16 +38,6 @@ class SOSUpdate(BaseModel):
 
 
 def register_sos_routes(app, connect, actor):
-    def identity(conn, user):
-        try:
-            user_id = int(user.sub)
-        except ValueError:
-            raise HTTPException(401, 'Not authenticated') from None
-        row = conn.execute('SELECT id,name,email,role FROM users WHERE id=%s', (user_id,)).fetchone()
-        if not row or row['role'] != user.role:
-            raise HTTPException(401, 'Not authenticated')
-        return row
-
     def notify(conn, title, message, alert_id, kind='info'):
         # Global notification feed must not disclose student names/contact/location.
         conn.execute('INSERT INTO notifications (title,message,type,reference_type,reference_id) '

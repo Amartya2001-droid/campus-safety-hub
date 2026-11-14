@@ -53,9 +53,9 @@ cd functions && npm ci && npm run build
 
 GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a disposable PostgreSQL service. Vitest currently includes only the original example test; the runtime smoke test supplies meaningful coverage for the Day 1 fixes. Functions have a build check, not a validated integration suite.
 
-## FastAPI campus-map and SOS service
+## FastAPI campus-map, SOS and dashboard service
 
-A clean [FastAPI service](backend/README.md) implements campus-location CRUD plus SOS alert list/create/status operations against the existing PostgreSQL tables, with validated payloads, role authorization and transactional SOS notifications. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes to use it through the existing Campus Map and SOS Alerts UIs. The service refuses startup without a suitable key. It does not replace login or the rest of Express. See the backend README for installation, trust boundaries, tests and exact configuration. No external API key is needed; no deployment is claimed.
+A clean [FastAPI service](backend/README.md) implements campus-location CRUD plus SOS alert list/create/status operations and role-scoped dashboard summary counts against the existing PostgreSQL tables, with validated payloads, role authorization and transactional SOS notifications. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes to use it through the existing Campus Map and SOS Alerts UIs. The service refuses startup without a suitable key. It does not replace login or the remaining Express routes. Dashboard summary errors are visible instead of appearing as zero counts; StarRez is labeled Configured, which does not claim verified connectivity. See the backend README for installation, trust boundaries, tests and exact configuration. No external API key is needed; no deployment is claimed.
 
 ## Browser end-to-end tests
 
