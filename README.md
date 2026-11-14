@@ -26,6 +26,8 @@ npm run build
 npm start
 ```
 
+Login waits for PostgreSQL session persistence before returning success; a failed session write returns 503. A regression test injects delayed and rejected session writes rather than relying on retries.
+
 Production cookies require HTTPS (including correct trusted proxy configuration); development cookies support localhost HTTP. The server listens on port 5000.
 
 ## Verified and blocked
@@ -42,6 +44,8 @@ Day 1 checks used local PostgreSQL and local MongoDB only; no production data wa
 
 ```bash
 npm run ci
+# Requires a disposable PostgreSQL database; injects delayed/failing session writes in an isolated schema.
+DATABASE_URL=postgresql://postgres@localhost:5432/postgres node --test scripts/session-persistence.test.mjs
 # Requires a disposable PostgreSQL database; initializes/seeds tables and temporarily creates a test user.
 DATABASE_URL=postgresql://postgres@localhost:5432/postgres npm run test:smoke
 cd functions && npm ci && npm run build
