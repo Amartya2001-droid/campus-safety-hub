@@ -98,3 +98,24 @@ Will do tomorrow:
 - Continue with the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
 
 Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
+
+## Day 6 — campus-safety-hub
+
+Date: Nov 15, 2026. Merged-main verification first, then the next bounded map/backend slice.
+
+Did:
+- Pulled latest main after reviewer merges of [PR #11](https://github.com/Amartya2001-droid/campus-safety-hub/pull/11) and [PR #12](https://github.com/Amartya2001-droid/campus-safety-hub/pull/12). Verified main `3138ca2` green before starting feature work: [CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43769770216) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43769770214) both succeeded for that exact merged commit.
+- Delivered the smallest next useful read slice in [PR #13](https://github.com/Amartya2001-droid/campus-safety-hub/pull/13): the existing Campus Map live overlays now use FastAPI through the session gateway when FASTAPI_URL is enabled. One PostgreSQL statement reads authorized alert/patrol projections from the existing tables. Staff see eligible overlays; students/faculty see alerts they created and patrols assigned to them. Current database identity/role checks apply; caller-supplied query parameters cannot widen scope. Contact details, notes and creator IDs are not returned.
+- Hardened map eligibility in [PR #13](https://github.com/Amartya2001-droid/campus-safety-hub/pull/13): unusable legacy coordinates and resolved SOS alerts are excluded; expired, future, unstarted, ended or invalid-duration patrols are excluded without modifying their records. Latest valid open check-ins use deterministic time/ID ordering. Check-ins are stored residence records, not live GPS. Unresolved alerts without usable coordinates still remain in SOS/summary and need attention.
+- Updated UI reliability/privacy in [PR #13](https://github.com/Amartya2001-droid/campus-safety-hub/pull/13): validated overlay responses, Loading/Unavailable counts, Retry and explicit stale warnings replace false empty/zero states. Account/role-scoped query keys prevent another sign-in from reusing private map cache data. SOS status changes invalidate overlays. README/backend/E2E docs state the exact behavior, optional Express fallback limitations and remaining migration boundaries. No schema, dependency, external integration or production setting was added.
+- Verified [PR #13](https://github.com/Amartya2001-droid/campus-safety-hub/pull/13) before opening: 65 PostgreSQL pytest cases (19 new map cases), 9 frontend tests (5 new focused map cases), lint/typecheck/build, 3 gateway tests and the deterministic session regression passed. Real development/production smoke checks cover owner versus staff-only legacy alerts, current check-ins, expired patrol exclusion without writes, and resolved overlays disappearing. All 14 production HTTPS Java/Selenium cases passed, including an active SOS appearing on the map and disappearing after resolution without treating a load error as an empty success. [PR CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43771559063) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43771559117) are green. Temporary fixtures/app processes and test PostgreSQL were cleaned up/stopped. The agent merged no PR and left held PR #1 untouched.
+
+Blocked on:
+- Amartya review/merge of PR #13 and review of this log-only PR. Remaining Express routes/fallback authorization and the broader app migration remain outside this read-only slice.
+- Production provisioning remains Amartya's call: privately supply SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve FASTAPI_URL/HTTPS/private-network topology, remove demo credentials, complete production security review and approve a deployment URL. No third-party API key is required for this slice. No key values were committed or posted, and no deployment was performed.
+
+Will do tomorrow:
+- Address review feedback and verify reviewer-approved merges on main with the backend, session and browser regression suites.
+- Continue the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
+
+Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
