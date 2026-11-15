@@ -78,3 +78,23 @@ Will do tomorrow:
 - Agree the next bounded dashboard/backend slice before expanding the migration; retain the production provisioning boundary.
 
 Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. All verification used disposable local/CI data.
+
+## Day 5 — campus-safety-hub
+
+Date: Nov 14, 2026. Review closeout first, then the smallest useful dashboard backend slice.
+
+Did:
+- Checked [PR #8](https://github.com/Amartya2001-droid/campus-safety-hub/pull/8) and [PR #9](https://github.com/Amartya2001-droid/campus-safety-hub/pull/9) discussions and merge state. #8 was reviewer-merged with its branch preserved; retargeted #9 to main after #8, and the reviewer merged #9. The reviewer also merged [PR #10](https://github.com/Amartya2001-droid/campus-safety-hub/pull/10), bringing the recovered Day 3 and Day 4 reports onto main. The post-merge discussion records those decisions and contains no requested code changes. The agent merged no PR and left held PR #1 untouched.
+- Delivered the next bounded slice in [PR #11](https://github.com/Amartya2001-droid/campus-safety-hub/pull/11), rebased onto current main after #8/#9/#10: FastAPI now serves the existing dashboard summary through the authenticated gateway when FASTAPI_URL is enabled. One PostgreSQL statement computes unresolved SOS, pending escort and active patrol counts from existing tables. Staff see totals; students/faculty see their own SOS/escort records and assigned patrols. Current database identity/role validation is shared with SOS. Expired, ended, future, unstarted and invalid-duration patrols do not count, and summary reads do not mutate patrol records.
+- Made status reporting accurate in [PR #11](https://github.com/Amartya2001-droid/campus-safety-hub/pull/11): the summary uses starrez_configured and the UI says Configured/Not configured, rather than claiming a verified connection from a saved URL. Both FastAPI and the Express fallback use the updated field. Failed, unauthorized or malformed summary responses show an error/Retry control instead of fake zero metrics. README/backend/E2E documentation states the contract and remaining scope boundaries. No schema, dependency, external integration or production configuration was added.
+- Verified [PR #11](https://github.com/Amartya2001-droid/campus-safety-hub/pull/11): 46 PostgreSQL pytest cases passed, including 10 new summary cases; 4 frontend tests, lint, TypeScript and production build passed; 3 Node gateway tests and the deterministic production session regression passed. Real development/production gateway smoke checks verify the summary contract, owner-scoped SOS counts and committed resolved totals against PostgreSQL. All 14 production HTTPS Java/Selenium cases passed, with dashboard cards checked against the authenticated API after login and after resolving an SOS. [GitHub checks](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43649887771) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43649887764) are green. Disposable local app processes, fixtures and PostgreSQL were cleaned up/stopped.
+
+Blocked on:
+- Amartya review/merge of PR #11 and review of this log-only PR. Other Express endpoints and broader authorization migration remain outside the summary/SOS slices.
+- Production provisioning remains Amartya's call: privately supply SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve FASTAPI_URL/HTTPS/private-network topology, remove demo credentials, complete production security review and approve a deployment URL. No third-party API key is needed for this slice. No key values were committed or posted, and no deployment was performed.
+
+Will do tomorrow:
+- Address review feedback and verify reviewer-approved merges on main, retaining session, backend and browser regression coverage.
+- Continue with the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
+
+Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
