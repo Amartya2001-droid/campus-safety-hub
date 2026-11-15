@@ -248,6 +248,9 @@ class PortalTest {
             """, name);
         long id = ((Number) value).longValue();
         assertTrue(id > 0, "SOS fixture must be persisted by the enabled FastAPI service");
+        driver.get(baseUrl + "/map");
+        heading("Campus Map");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(testId("map-alert-" + id)));
         driver.get(baseUrl + "/alerts");
         heading("SOS Alerts");
         var row = testId("row-alert-" + id);
@@ -260,6 +263,12 @@ class PortalTest {
         heading("SOS Alerts");
         wait.until(ExpectedConditions.textToBePresentInElementLocated(row, "RESOLVED"));
         assertTrue(driver.findElements(testId("button-assign-" + id)).isEmpty());
+        driver.get(baseUrl + "/map");
+        heading("Campus Map");
+        // Query success is required before checking absence; an error must not masquerade as empty.
+        wait.until(d -> !d.findElement(testId("toggle-layer-alerts")).getText().contains("Loading"));
+        wait.until(ExpectedConditions.invisibilityOfElementLocated(testId("map-alert-" + id)));
+        assertTrue(driver.findElements(By.cssSelector("[role='alert']")).isEmpty());
         driver.get(baseUrl + "/");
         heading("Dashboard");
         assertDashboardSummaryMatchesApi();

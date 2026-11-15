@@ -84,13 +84,30 @@ try {
         const submitted = await fetch(sosEndpoint, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(sosBody) });
         assert.equal(submitted.status, 201);
         const alert = await submitted.json();
+        let legacyAlertId;
+        let patrolId;
         try {
           assert.equal(alert.student_name, 'Smoke Test', 'Non-staff identity comes from the authenticated database user');
           assert.equal(alert.created_by, userId);
+          const legacy = await pool.query("INSERT INTO sos_alerts(student_name,location,lat,lng) VALUES ('Smoke legacy fixture','Fixture',45,-64) RETURNING id");
+          legacyAlertId = legacy.rows[0].id;
+          const patrol = await pool.query("INSERT INTO patrol_sessions(created_by,assigned_student_id,status,started_at) VALUES ($1,$1,'active',NOW()-INTERVAL '1 minute') RETURNING id", [userId]);
+          patrolId = patrol.rows[0].id;
+          await pool.query("INSERT INTO patrol_checkins(session_id,residence_name) VALUES ($1,'Smoke residence fixture')", [patrolId]);
+          const ownMap = await (await fetch(`${base}/api/map/live-data`, { headers })).json();
+          assert.ok(ownMap.active_alerts.some(row => row.id === alert.id));
+          assert.ok(!ownMap.active_alerts.some(row => row.id === legacyAlertId));
+          assert.equal(ownMap.active_patrols.find(row => row.id === patrolId).current_residence, 'Smoke residence fixture');
+          await pool.query("UPDATE patrol_sessions SET started_at=NOW()-INTERVAL '6 hours' WHERE id=$1", [patrolId]);
+          const expiredMap = await (await fetch(`${base}/api/map/live-data`, { headers })).json();
+          assert.ok(!expiredMap.active_patrols.some(row => row.id === patrolId));
+          assert.equal((await pool.query('SELECT status FROM patrol_sessions WHERE id=$1', [patrolId])).rows[0].status, 'active');
+
           assert.equal((await (await fetch(`${base}/api/dashboard/stats`, { headers })).json()).active_alerts, 1);
           assert.equal((await fetch(`${sosEndpoint}/${alert.id}/status`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'resolved' }) })).status, 403);
           await pool.query("UPDATE users SET role='admin' WHERE id=$1", [userId]);
           assert.ok((await (await fetch(sosEndpoint, { headers })).json()).some(row => row.id === alert.id));
+          assert.ok((await (await fetch(`${base}/api/map/live-data`, { headers })).json()).active_alerts.some(row => row.id === legacyAlertId));
           for (const status of ['assigned', 'en_route', 'resolved']) {
             const changed = await fetch(`${sosEndpoint}/${alert.id}/status`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ status, ...(status === 'assigned' ? { assigned_officer: 'Smoke Test' } : {}) }) });
             assert.equal(changed.status, 200);
@@ -104,6 +121,8 @@ try {
           assert.ok(!map.active_alerts.some(row => row.id === alert.id));
         } finally {
           await pool.query("DELETE FROM notifications WHERE reference_type='sos_alert' AND reference_id=$1", [alert.id]);
+          if (patrolId) await pool.query('DELETE FROM patrol_sessions WHERE id=$1', [patrolId]);
+          if (legacyAlertId) await pool.query('DELETE FROM sos_alerts WHERE id=$1', [legacyAlertId]);
           await pool.query('DELETE FROM sos_alerts WHERE id=$1', [alert.id]);
           await pool.query("UPDATE users SET role='student' WHERE id=$1", [userId]);
         }

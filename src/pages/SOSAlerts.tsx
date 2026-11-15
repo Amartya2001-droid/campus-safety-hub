@@ -39,6 +39,7 @@ const SOSAlerts = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sos-alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/map/live-data"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
     },
   });

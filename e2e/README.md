@@ -10,7 +10,7 @@ Coverage:
 - Login persists through refresh and direct navigation.
 - Logout invalidates the server session; protected route reload shows login.
 - All eight SPA routes render on direct navigation and refresh, including production fallback.
-- An SOS fixture is submitted through the authenticated API, then assigned, moved en route, resolved and refreshed through the real dashboard UI.
+- An SOS fixture is submitted through the authenticated API, shown as an active Campus Map overlay, then assigned, moved en route, resolved and refreshed through the real dashboard UI; the resolved alert disappears from the map without a failed-load/empty-state shortcut.
 - A campus-map location is created through the UI, read through the authenticated API, and deleted afterward. This exercises the rebuilt backend, not the held PR #1 proposal.
 
 ## Run the complete local stack
