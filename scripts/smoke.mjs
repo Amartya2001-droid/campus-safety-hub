@@ -51,6 +51,12 @@ try {
       const me = await fetch(`${base}/api/me`, { headers });
       assert.equal(me.status, 200);
       assert.equal((await me.json()).id, userId);
+      const summary = await (await fetch(`${base}/api/dashboard/stats`, { headers })).json();
+      assert.equal(typeof summary.starrez_configured, 'boolean');
+      assert.equal(summary.starrez_connected, undefined);
+      for (const key of ['active_alerts', 'pending_escorts', 'active_patrols']) {
+        assert.ok(Number.isSafeInteger(summary[key]) && summary[key] >= 0);
+      }
       if (process.env.FASTAPI_URL) {
         const endpoint = `${base}/api/campus-locations`;
         assert.equal((await fetch(endpoint)).status, 401);
@@ -81,6 +87,7 @@ try {
         try {
           assert.equal(alert.student_name, 'Smoke Test', 'Non-staff identity comes from the authenticated database user');
           assert.equal(alert.created_by, userId);
+          assert.equal((await (await fetch(`${base}/api/dashboard/stats`, { headers })).json()).active_alerts, 1);
           assert.equal((await fetch(`${sosEndpoint}/${alert.id}/status`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'resolved' }) })).status, 403);
           await pool.query("UPDATE users SET role='admin' WHERE id=$1", [userId]);
           assert.ok((await (await fetch(sosEndpoint, { headers })).json()).some(row => row.id === alert.id));
@@ -89,6 +96,9 @@ try {
             assert.equal(changed.status, 200);
           }
           assert.equal((await pool.query('SELECT status FROM sos_alerts WHERE id=$1', [alert.id])).rows[0].status, 'resolved');
+          const staffStats = await (await fetch(`${base}/api/dashboard/stats`, { headers })).json();
+          const active = await pool.query("SELECT count(*)::int AS count FROM sos_alerts WHERE status <> 'resolved'");
+          assert.equal(staffStats.active_alerts, active.rows[0].count);
           assert.equal((await pool.query("SELECT count(*)::int AS count FROM notifications WHERE reference_type='sos_alert' AND reference_id=$1", [alert.id])).rows[0].count, 4);
           const map = await (await fetch(`${base}/api/map/live-data`, { headers })).json();
           assert.ok(!map.active_alerts.some(row => row.id === alert.id));

@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -114,10 +115,29 @@ class PortalTest {
         return ((Number) result).intValue();
     }
 
+    private void assertDashboardSummaryMatchesApi() {
+        Object raw = ((JavascriptExecutor) driver).executeAsyncScript("""
+            const done = arguments[arguments.length - 1];
+            fetch('/api/dashboard/stats', {credentials:'include'})
+              .then(r => r.ok ? r.json() : null).then(done).catch(() => done(null));
+            """);
+        assertInstanceOf(Map.class, raw);
+        Map<?, ?> stats = (Map<?, ?>) raw;
+        wait.until(ExpectedConditions.visibilityOfElementLocated(testId("dashboard-summary")));
+        String[][] cards = {{"active_alerts","Active Alerts"}, {"pending_escorts","Pending Escorts"}, {"active_patrols","Campus Patrol"}};
+        for (String[] card : cards) {
+            String expected = String.valueOf(((Number) stats.get(card[0])).longValue());
+            wait.until(ExpectedConditions.textToBe(By.xpath("//*[@data-testid='dashboard-summary']//p[normalize-space()='" + card[1] + "']/following-sibling::p[1]"), expected));
+        }
+        String configured = Boolean.TRUE.equals(stats.get("starrez_configured")) ? "Configured" : "Not configured";
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@data-testid='dashboard-summary']//p[normalize-space()='StarRez']/following-sibling::p[1]"), configured));
+    }
+
     @Test
     void validCredentialsOpenDashboardAndAuthenticateSession() {
         loginSuccessfully();
         heading("Dashboard");
+        assertDashboardSummaryMatchesApi();
         assertEquals(200, sessionStatus());
         var session = driver.manage().getCookieNamed("connect.sid");
         assertNotNull(session, "The real login endpoint must create a server session");
@@ -240,6 +260,9 @@ class PortalTest {
         heading("SOS Alerts");
         wait.until(ExpectedConditions.textToBePresentInElementLocated(row, "RESOLVED"));
         assertTrue(driver.findElements(testId("button-assign-" + id)).isEmpty());
+        driver.get(baseUrl + "/");
+        heading("Dashboard");
+        assertDashboardSummaryMatchesApi();
     }
 
 }

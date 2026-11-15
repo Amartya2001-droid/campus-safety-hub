@@ -1,7 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatTimeAgo, apiFetch } from "@/lib/api";
+import { formatTimeAgo, apiFetch, fetchDashboardSummary } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -19,9 +19,9 @@ import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["/api/dashboard/stats"],
-    queryFn: () => apiFetch("/api/dashboard/stats"),
+    queryFn: fetchDashboardSummary,
     refetchInterval: 10000,
     retry: false,
   });
@@ -47,12 +47,14 @@ const Index = () => {
   return (
     <DashboardLayout title="Dashboard" subtitle="Security Operations Overview">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {statsLoading ? (
+        {statsError ? (
+          <div role="alert" className="col-span-full glass-card p-4">Dashboard summary unavailable. <Button onClick={() => refetchStats()}>Retry</Button></div>
+        ) : statsLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-lg" />
           ))
         ) : (
-          <>
+          <div data-testid="dashboard-summary" className="contents">
             <StatCard
               label="Active Alerts"
               value={stats?.active_alerts ?? 0}
@@ -69,9 +71,9 @@ const Index = () => {
             />
             <StatCard
               label="StarRez"
-              value={stats?.starrez_connected ? "Connected" : "Offline"}
+              value={stats?.starrez_configured ? "Configured" : "Not configured"}
               icon={Link2}
-              variant={stats?.starrez_connected ? "info" : "warning"}
+              variant={stats?.starrez_configured ? "info" : "warning"}
               trend=""
             />
             <StatCard
@@ -81,7 +83,7 @@ const Index = () => {
               variant="success"
               trend="Active patrols"
             />
-          </>
+          </div>
         )}
       </div>
 
@@ -194,7 +196,7 @@ const Index = () => {
               </Link>
             </div>
             <div className="p-4">
-              {stats?.starrez_connected ? (
+              {stats?.starrez_configured ? (
                 <div className="text-center py-2" data-testid="text-starrez-status">
                   <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
                   <p className="text-sm font-medium">StarRez Connected</p>

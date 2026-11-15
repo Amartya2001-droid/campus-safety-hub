@@ -1,4 +1,4 @@
-# Campus safety backend — map and SOS slices
+# Campus safety backend — map, SOS and dashboard slices
 
 This service implements the existing campus-map location API: authenticated listing and role-restricted create, patch and delete, backed by the same PostgreSQL `campus_locations` table as Express. It creates the table if absent, but does not seed data or create users. The next slice adds the existing SOS alert list/create/status endpoints and transactional notification writes. It is not a replacement for all Express routes. Login, sessions, dashboard aggregates/live-map reads, patrols and other features stay in Express. No Expo app or files from held PR #1 are included.
 
@@ -40,6 +40,18 @@ With `FASTAPI_URL` enabled, Express also forwards `GET/POST /api/sos-alerts` and
 - The SOS page uses the signed-in staff member's name for its Assign action, hides staff actions for non-staff, disables pending actions, and displays load/update failures. This slice does not add an external dispatch service, promise emergency response, migrate other Express endpoints, or claim a full app privacy/security review. Other legacy Express data endpoints remain outside this slice.
 - No delete endpoint is added for SOS history. Use only disposable data for automated tests. The local E2E runner deletes its own unique SOS fixtures through the test database, not a production API.
 
+## Dashboard summary slice
+
+`GET /api/dashboard/stats` also uses FastAPI when `FASTAPI_URL` is enabled. It reads the existing Express-initialized tables in one SQL statement, giving all summary values a consistent PostgreSQL snapshot. No tables, dependencies, external services or production settings are added.
+
+The JSON contract is `active_alerts`, `pending_escorts`, `active_patrols` (integer counts), and `starrez_configured` (boolean). Staff see total unresolved SOS alerts, pending escorts and currently active patrols; students/faculty see SOS/escorts they created and patrols assigned to them. Null-owned legacy rows are staff-only in the summary. The signed actor is checked against the current database account/role using the same helper as SOS. Missing tables/database errors return 503, not a success containing zero counts.
+
+A patrol counts only when it is active, started, not ended, has a positive duration and has not reached its deadline. This read does not change patrol statuses. Existing Express patrol workflow/expiry writes remain outside this slice; the optional Express-only summary retains that legacy expiry behavior.
+
+StarRez `Configured` means the first stored configuration has a nonblank URL; it does **not** mean a live connection was verified. The misleading old `starrez_connected` summary key is replaced by `starrez_configured` in both FastAPI and the Express fallback, and the dashboard labels this accurately. Other StarRez integration endpoints are unchanged.
+
+The UI validates the summary contract and shows an error/Retry control on failed, unauthorized or malformed data, instead of displaying zero metrics. Existing endpoint-list privacy limitations outside this summary/SOS slice remain; this is not a complete application authorization migration.
+
 ## Verification
 
 Use a disposable database, never production. Tests isolate their tables in random schemas and drop them afterward:
@@ -63,4 +75,4 @@ Key pins: FastAPI 0.162.5, Starlette 1.10.0, PyJWT 2.15.1, psycopg/psycopg-binar
 
 ## Slice boundary / live status
 
-Not live yet. This delivers campus-map and SOS persistence/validation/authorization, transactional SOS notifications, and existing frontend wiring. No new identity system, mobile app, external service integration, all-route API migration, production deployment or operational safety certification is claimed. Future backend expansion should use separate reviewed slices. Needed to deploy: privately provisioned `SECRET_KEY`, `DATABASE_URL`, existing `SESSION_SECRET`, approved HTTPS/internal service topology, removal of demo credentials, and production security review. No third-party API key is required for this slice.
+Not live yet. This delivers campus-map and SOS persistence/validation/authorization, transactional SOS notifications, a role-scoped dashboard summary and existing frontend wiring. No new identity system, mobile app, external service integration, all-route API migration, production deployment or operational safety certification is claimed. Future backend expansion should use separate reviewed slices. Needed to deploy: privately provisioned `SECRET_KEY`, `DATABASE_URL`, existing `SESSION_SECRET`, approved HTTPS/internal service topology, removal of demo credentials, and production security review. No third-party API key is required for this slice.

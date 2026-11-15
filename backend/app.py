@@ -163,4 +163,6 @@ def create_app() -> FastAPI:
 
     from backend.sos import register_sos_routes
     register_sos_routes(app, connect, actor)
+    from backend.dashboard import register_dashboard_routes
+    register_dashboard_routes(app, connect, actor)
     return app
