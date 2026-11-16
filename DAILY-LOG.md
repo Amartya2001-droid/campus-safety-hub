@@ -119,3 +119,23 @@ Will do tomorrow:
 - Continue the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
 
 Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
+
+## Day 7 — campus-safety-hub
+
+Date: Nov 16, 2026. Merged-main verification first, then the bounded escort queue slice.
+
+Did:
+- Pulled latest main after reviewer merges of [PR #13](https://github.com/Amartya2001-droid/campus-safety-hub/pull/13) and [PR #14](https://github.com/Amartya2001-droid/campus-safety-hub/pull/14). Verified exact merged commit `7620a88` green before feature work: [CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43971304676) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43971304393) both succeeded.
+- Delivered the next bounded workflow in [PR #15](https://github.com/Amartya2001-droid/campus-safety-hub/pull/15): FastAPI now handles escort list/create/status through the existing session gateway and PostgreSQL tables when FASTAPI_URL is enabled. Students/faculty see their own requests and use database-derived identity; staff see/manage the queue. Validated inputs and staff-only transitions, row locks, terminal-state protection, duplicate-safe status updates and atomic generic notifications prevent unauthorized or partial state changes. No schema, dependency, identity system or external dispatch integration was added.
+- Updated the existing queue and dashboard preview in [PR #15](https://github.com/Amartya2001-droid/campus-safety-hub/pull/15): account/role-scoped caches, response validation, loading/error/Retry states, hidden non-staff controls, disabled pending actions and visible mutation failures. Assign uses the signed-in staff account name and no longer invents `Officer on duty` or `5 min`. ETA is optional supplied text, not a calculated/guaranteed arrival time, and terminal states clear it. The UI supports Assign → Start Escort → Mark Completed; staff cancellation is API-only. A student request form and history-delete API are outside this slice. README/backend/E2E docs, including the previously stale backend overview, now describe the delivered scope and legacy fallback limitations.
+- Verified [PR #15](https://github.com/Amartya2001-droid/campus-safety-hub/pull/15) before opening: 84 real PostgreSQL pytest cases (19 new escort cases), 15 frontend tests (6 new queue cases), lint/typecheck/build, 3 gateway tests and the deterministic production session regression passed. Real development/production smoke checks cover request identity, owner/staff permissions, committed notifications, workflow persistence and no invented ETA. All 15 production HTTPS Java/Selenium cases passed, including the new request → dashboard preview/counts → Assign → Start → Completed → refresh flow. [PR CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43974273341) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/43974273086) are green for the final documentation-updated head. Temporary request/notification/account fixtures, local app processes and test PostgreSQL were cleaned up/stopped. The agent merged no PR and left held PR #1 untouched.
+
+Blocked on:
+- Amartya review/merge of PR #15 and review of this log-only PR. Remaining Express endpoints/fallback authorization and broader app migration remain outside this escort slice.
+- Production provisioning remains Amartya's call: privately supply SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve FASTAPI_URL/HTTPS/private-network topology, remove demo credentials, complete production security review and approve a deployment URL. No third-party API key is required for this slice. No production secrets or API keys were invented, committed or posted, and no deployment was performed.
+
+Will do tomorrow:
+- Address review feedback and verify reviewer-approved merges on main with backend, session and browser regression coverage.
+- Continue the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
+
+Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
