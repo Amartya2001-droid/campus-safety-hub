@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiRequest, formatTimeAgo } from "@/lib/api";
+import { apiFetch, apiRequest, formatTimeAgo, fetchLiveMapData } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -93,25 +93,6 @@ interface CampusLocation {
   description: string | null;
 }
 
-interface LiveAlert {
-  id: number;
-  student_name: string;
-  location: string;
-  lat: number;
-  lng: number;
-  type: string | null;
-  status: string;
-  created_at: string;
-}
-
-interface LivePatrol {
-  id: number;
-  student_name: string;
-  status: string;
-  started_at: string;
-  current_residence: string | null;
-}
-
 const CampusMap = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -140,13 +121,14 @@ const CampusMap = () => {
   });
   const locations: CampusLocation[] = Array.isArray(locationsRaw) ? locationsRaw : [];
 
-  const { data: liveDataRaw } = useQuery({
-    queryKey: ["/api/map/live-data"],
-    queryFn: () => apiFetch("/api/map/live-data"),
+  const { data: liveDataRaw, isError: liveDataError, isLoading: liveDataLoading, refetch: refetchLiveData } = useQuery({
+    queryKey: ["/api/map/live-data", user?.id, user?.role],
+    enabled: !!user,
+    queryFn: fetchLiveMapData,
     refetchInterval: 10000,
     retry: false,
   });
-  const liveData = liveDataRaw && typeof liveDataRaw === "object" && !Array.isArray(liveDataRaw) ? liveDataRaw as { active_alerts: LiveAlert[]; active_patrols: LivePatrol[] } : null;
+
 
   const addMutation = useMutation({
     mutationFn: (data: { name: string; type: string; lat: number; lng: number; description: string }) => apiRequest("/api/campus-locations", { method: "POST", body: JSON.stringify(data) }),
@@ -187,8 +169,8 @@ const CampusMap = () => {
     [locations, visibleLayers]
   );
 
-  const activeAlerts = liveData?.active_alerts || [];
-  const activePatrols = liveData?.active_patrols || [];
+  const activeAlerts = liveDataRaw?.active_alerts || [];
+  const activePatrols = liveDataRaw?.active_patrols || [];
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -200,7 +182,10 @@ const CampusMap = () => {
 
   return (
     <DashboardLayout title="Campus Map" subtitle="Live campus safety map — Acadia University">
-      <div className="flex flex-col lg:flex-row gap-4">
+      {liveDataError && (
+        <div role="alert" className="glass-card p-4 mb-4">Live map data unavailable; overlays may be stale. <Button onClick={() => refetchLiveData()}>Retry</Button></div>
+      )}
+      <div data-testid="live-map-overlays" data-stale={liveDataError} className="flex flex-col lg:flex-row gap-4">
         <div className="lg:w-72 space-y-4 shrink-0">
           <div className="glass-card p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -237,7 +222,7 @@ const CampusMap = () => {
                 {visibleLayers.alerts ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                 <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                 <span className="flex-1 text-left">Active Alerts</span>
-                <span className="text-xs text-red-500 font-bold">{activeAlerts.length}</span>
+                <span className="text-xs text-red-500 font-bold">{liveDataError ? "Unavailable" : liveDataLoading ? "Loading" : activeAlerts.length}</span>
               </button>
               <button
                 onClick={() => toggleLayer("patrols")}
@@ -249,7 +234,7 @@ const CampusMap = () => {
                 {visibleLayers.patrols ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
                 <span className="flex-1 text-left">Active Patrols</span>
-                <span className="text-xs text-emerald-500 font-bold">{activePatrols.length}</span>
+                <span className="text-xs text-emerald-500 font-bold">{liveDataError ? "Unavailable" : liveDataLoading ? "Loading" : activePatrols.length}</span>
               </button>
             </div>
           </div>

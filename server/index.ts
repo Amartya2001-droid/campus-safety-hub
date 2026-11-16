@@ -487,6 +487,10 @@ async function start() {
     return res.json({ success: true });
   });
 
+  if (mapBackend) {
+    app.get("/api/map/live-data", requireAuth, mapBackend);
+  }
+
   app.get("/api/map/live-data", requireAuth, async (_req, res) => {
     const [alerts, patrols] = await Promise.all([
       pool.query("SELECT id, student_name, location, lat, lng, type, status, created_at FROM sos_alerts WHERE status != 'resolved' AND lat IS NOT NULL AND lng IS NOT NULL"),
