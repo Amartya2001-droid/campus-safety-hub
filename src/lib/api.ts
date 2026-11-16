@@ -93,3 +93,28 @@ export async function fetchLiveMapData(): Promise<LiveMapData> {
   }
   return data;
 }
+
+export interface EscortRequest {
+  id: number;
+  student_name: string;
+  pickup: string;
+  destination: string;
+  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+  notes: string | null;
+  assigned_officer: string | null;
+  eta: string | null;
+  created_at: string;
+}
+
+export async function fetchEscortRequests(): Promise<EscortRequest[]> {
+  const data = await apiFetch("/api/escort-requests");
+  if (!Array.isArray(data) || !data.every((row: EscortRequest) => row &&
+      Number.isSafeInteger(row.id) && row.id > 0 && typeof row.student_name === "string" &&
+      typeof row.pickup === "string" && typeof row.destination === "string" &&
+      ["pending", "assigned", "in_progress", "completed", "cancelled"].includes(row.status) &&
+      [row.notes, row.assigned_officer, row.eta].every(value => value === null || typeof value === "string") &&
+      typeof row.created_at === "string" && Number.isFinite(Date.parse(row.created_at)))) {
+    throw new Error("Escort requests unavailable");
+  }
+  return data;
+}

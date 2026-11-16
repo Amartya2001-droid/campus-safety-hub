@@ -1,4 +1,4 @@
-# Campus safety backend — map, SOS, summary and live overlays
+# Campus safety backend — map, SOS, escorts and read models
 
 This service implements the existing campus-map location API: authenticated listing and role-restricted create, patch and delete, backed by the same PostgreSQL `campus_locations` table as Express. It creates the table if absent, but does not seed data or create users. The next slice adds the existing SOS alert list/create/status endpoints and transactional notification writes. It is not a replacement for all Express routes. Login, sessions, dashboard aggregates/live-map reads, patrols and other features stay in Express. No Expo app or files from held PR #1 are included.
 
@@ -66,6 +66,18 @@ The Campus Map validates the overlay response before rendering it. Initial count
 
 These ownership/eligibility rules apply to the FastAPI path. The optional Express-only fallback retains its legacy map query; the broader Express migration and production security review remain incomplete. Missing tables/database errors return a generic 503, not a false empty success. No external dispatch, geolocation or map-tile service is configured or verified by this slice.
 
+## Escort queue slice
+
+With `FASTAPI_URL` enabled, `GET/POST /api/escort-requests` and `PATCH /api/escort-requests/{id}/status` also use FastAPI over the existing Express-initialized `users`, `escort_requests` and `notifications` tables. No schema, new account store or external dispatch service is added. The existing Escorts page and dashboard preview use this API; a new student request form is not included in this slice.
+
+Students/faculty list only their own requests, and non-staff submission names/creator IDs come from the authenticated database account. Staff may submit on behalf of someone and see the full queue. Unknown fields, initial status/creator injection, blank names/routes and oversized text are rejected. Every request checks the signed actor against the current database identity/role.
+
+Only admins/safety officials update statuses: pending → assigned/cancelled; assigned → in_progress/cancelled; in_progress → completed/cancelled. Assignment requires an officer name; completed/cancelled requests cannot reopen. Row locks serialize competing updates. Repeating the current status without conflicting assignment details is retry-safe and does not duplicate a notification. ETA is optional caller-supplied text, never computed or invented; terminal states clear it (including on retries). Staff cancellation is supported by the API; the existing UI provides Assign, Start Escort and Mark Completed.
+
+Creation and each status change commit their notification in the same transaction; notification failure rolls back the request/status write. Global notification messages omit names, phone numbers, pickup/destination and notes. Existing dashboard counts immediately reflect committed pending-status changes.
+
+The UI assigns the signed-in staff member's real account name and no longer invents `Officer on duty` or `5 min`. It hides staff actions from non-staff, disables pending mutations and surfaces errors. Queue and preview data are validated and cached by account/role, with load/error/Retry states rather than false empty results. This does not migrate other legacy endpoints or certify real-world escort availability. The Express-only fallback remains its legacy implementation and is not a complete authorization/security boundary.
+
 ## Verification
 
 Use a disposable database, never production. Tests isolate their tables in random schemas and drop them afterward:
@@ -89,4 +101,4 @@ Key pins: FastAPI 0.162.5, Starlette 1.10.0, PyJWT 2.15.1, psycopg/psycopg-binar
 
 ## Slice boundary / live status
 
-Not live yet. This delivers campus-map and SOS persistence/validation/authorization, transactional SOS notifications, a role-scoped dashboard summary/live overlay read model and existing frontend wiring. No new identity system, mobile app, external service integration, all-route API migration, production deployment or operational safety certification is claimed. Future backend expansion should use separate reviewed slices. Needed to deploy: privately provisioned `SECRET_KEY`, `DATABASE_URL`, existing `SESSION_SECRET`, approved HTTPS/internal service topology, removal of demo credentials, and production security review. No third-party API key is required for this slice.
+Not live yet. This delivers campus-map and SOS persistence/validation/authorization, transactional SOS notifications, the escort queue workflow, a role-scoped dashboard summary/live overlay read model and existing frontend wiring. No new identity system, mobile app, external service integration, all-route API migration, production deployment or operational safety certification is claimed. Future backend expansion should use separate reviewed slices. Needed to deploy: privately provisioned `SECRET_KEY`, `DATABASE_URL`, existing `SESSION_SECRET`, approved HTTPS/internal service topology, removal of demo credentials, and production security review. No third-party API key is required for this slice.

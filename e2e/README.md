@@ -4,6 +4,8 @@ This is a separate Maven project using Selenium 4.52.0 and JUnit 6.1.3 on Java 2
 
 Coverage:
 
+- An escort fixture is created through the authenticated API, shown in the dashboard preview, assigned to the signed-in staff member without an invented ETA, started, completed and refreshed through the real UI; pending counts track the committed workflow.
+
 - Valid login through the UI creates an HTTP-only server-session cookie and opens the dashboard.
 - Invalid credentials display the real error and leave the session unauthenticated.
 - Dashboard summary cards match the authenticated API after login and after an SOS is resolved; StarRez indicates configuration, not verified connectivity.
@@ -26,7 +28,7 @@ DATABASE_URL=postgresql://postgres@127.0.0.1:5432/postgres \
   PYTHON=backend/.venv/bin/python node e2e/run-local.mjs
 ```
 
-The runner starts FastAPI on 8101 and production Express on 5000, then serves a loopback HTTPS test proxy on 5443. This lets Chrome exercise real production `Secure` cookies and SPA fallback. Ports must be free. The runner generates a one-day self-signed certificate and private key in an OS temporary directory, supplies temporary random signing/session keys in memory, and removes the TLS files afterward. Only this local browser run opts into accepting that certificate; Maven/network TLS verification stays enabled. It provisions a randomly named disposable admin user and removes that account and this run's location/SOS/notification fixtures in cleanup. Existing Express initialization seeds demo accounts in an empty database: never run this against production or shared operational data.
+The runner starts FastAPI on 8101 and production Express on 5000, then serves a loopback HTTPS test proxy on 5443. This lets Chrome exercise real production `Secure` cookies and SPA fallback. Ports must be free. The runner generates a one-day self-signed certificate and private key in an OS temporary directory, supplies temporary random signing/session keys in memory, and removes the TLS files afterward. Only this local browser run opts into accepting that certificate; Maven/network TLS verification stays enabled. It provisions a randomly named disposable admin user and removes that account and this run's location/SOS/escort/notification fixtures in cleanup. Existing Express initialization seeds demo accounts in an empty database: never run this against production or shared operational data.
 
 Useful optional environment variables:
 
@@ -53,7 +55,7 @@ The Java suite reads **`APP_BASE_URL`**, default **`http://localhost:5000`**. Su
 APP_BASE_URL=http://localhost:5000 mvn -f e2e/pom.xml test
 ```
 
-`E2E_ACCEPT_INSECURE_CERTS=true` is an optional browser-only setting for a local self-signed HTTPS test origin. Leave it unset for deployed environments. Running against an existing app creates a uniquely named SOS fixture and resolves it through the UI; that history remains in the database because there is no SOS delete API. It also creates and deletes a uniquely named `Selenium fixture ...` campus-map row, so use only authorized test data and accounts. The standalone suite does not provision or delete accounts.
+`E2E_ACCEPT_INSECURE_CERTS=true` is an optional browser-only setting for a local self-signed HTTPS test origin. Leave it unset for deployed environments. Running against an existing app creates a uniquely named SOS fixture and resolves it through the UI; that history remains in the database because there is no SOS delete API. It also creates and completes an escort fixture whose history remains when using standalone Maven against an existing test app. The local runner cleans both through its disposable database. It also creates and deletes a uniquely named `Selenium fixture ...` campus-map row, so use only authorized test data and accounts. The standalone suite does not provision or delete accounts.
 
 ## CI / status
 

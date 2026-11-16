@@ -274,4 +274,49 @@ class PortalTest {
         assertDashboardSummaryMatchesApi();
     }
 
+    private long pendingEscortCount() {
+        Object value = ((JavascriptExecutor) driver).executeAsyncScript("""
+            const done = arguments[arguments.length-1];
+            fetch('/api/dashboard/stats',{credentials:'include'}).then(r=>r.json())
+              .then(row=>done(row.pending_escorts)).catch(()=>done(-1));
+            """);
+        assertInstanceOf(Number.class,value);
+        return ((Number)value).longValue();
+    }
+
+    @Test
+    void escortCanBeAssignedStartedAndCompletedWithoutInventedEta() {
+        loginSuccessfully();
+        long before = pendingEscortCount();
+        assertTrue(before >= 0);
+        String name = "Selenium Escort " + System.getenv().getOrDefault("E2E_RUN_ID","standalone") + " " + UUID.randomUUID();
+        Object value = ((JavascriptExecutor) driver).executeAsyncScript("""
+            const name=arguments[0],done=arguments[arguments.length-1];
+            fetch('/api/escort-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({student_name:name,pickup:'Disposable pickup',destination:'Disposable destination'})})
+              .then(async r=>done(r.status===201?(await r.json()).id:-1)).catch(()=>done(-1));
+            """,name);
+        long id=((Number)value).longValue();
+        assertTrue(id>0);
+        assertEquals(before+1,pendingEscortCount());
+        driver.get(baseUrl+"/");
+        heading("Dashboard");
+        assertDashboardSummaryMatchesApi();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(testId("card-escort-"+id)));
+        driver.get(baseUrl+"/escorts");
+        heading("Escort Requests");
+        wait.until(ExpectedConditions.elementToBeClickable(testId("button-assign-escort-"+id))).click();
+        wait.until(ExpectedConditions.elementToBeClickable(testId("button-start-escort-"+id)));
+        assertTrue(driver.findElement(testId("card-escort-"+id)).getText().contains("Selenium Test User"));
+        assertFalse(driver.findElement(testId("card-escort-"+id)).getText().contains("ETA:"));
+        driver.findElement(testId("button-start-escort-"+id)).click();
+        wait.until(ExpectedConditions.elementToBeClickable(testId("button-complete-escort-"+id))).click();
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(testId("card-escort-"+id),"COMPLETED"));
+        driver.navigate().refresh();
+        heading("Escort Requests");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(testId("card-escort-"+id),"COMPLETED"));
+        assertEquals(before,pendingEscortCount());
+        assertTrue(driver.findElements(testId("button-assign-escort-"+id)).isEmpty());
+    }
+
 }
