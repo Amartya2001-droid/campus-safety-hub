@@ -1,6 +1,6 @@
 # Campus safety backend — map, SOS, escorts and read models
 
-This service implements the existing campus-map location API: authenticated listing and role-restricted create, patch and delete, backed by the same PostgreSQL `campus_locations` table as Express. It creates the table if absent, but does not seed data or create users. The next slice adds the existing SOS alert list/create/status endpoints and transactional notification writes. It is not a replacement for all Express routes. Login, sessions, dashboard aggregates/live-map reads, patrols and other features stay in Express. No Expo app or files from held PR #1 are included.
+This service handles campus-location CRUD, SOS and escort list/create/status operations, dashboard summary counts and live-map reads through the existing Express session gateway. It uses the same PostgreSQL tables as Express; location-table initialization is supported, while Express owns user/session and remaining schema initialization. It does not seed users or replace all Express routes. Login, sessions, patrol workflow writes, broadcasts, notification reads and StarRez integration remain in Express. No Expo app or files from held PR #1 are included.
 
 ## Run locally
 
@@ -16,7 +16,7 @@ backend/.venv/bin/python -m pip check
 backend/.venv/bin/python -m uvicorn backend.app:create_app --factory --host 127.0.0.1 --port 8101
 ```
 
-In a second terminal, supply the same `DATABASE_URL` and `SECRET_KEY`, set `FASTAPI_URL=http://127.0.0.1:8101`, set the existing Express `SESSION_SECRET` privately, then run `npm run dev` (or `npm run build && npm start`). Open http://localhost:5000 and sign in using an account in that database. The existing Campus Map and SOS Alerts pages call their same `/api/campus-locations` and `/api/sos-alerts` URLs through Express. No browser API key is needed.
+In a second terminal, supply the same `DATABASE_URL` and `SECRET_KEY`, set `FASTAPI_URL=http://127.0.0.1:8101`, set the existing Express `SESSION_SECRET` privately, then run `npm run dev` (or `npm run build && npm start`). Open http://localhost:5000 and sign in using an account in that database. The existing Campus Map, SOS Alerts, Escorts and Dashboard pages call their existing API URLs through Express, which forwards the migrated slices to FastAPI. No browser API key is needed.
 
 FastAPI refuses startup if `SECRET_KEY` is missing, blank, short, a known fallback, or trivially repeated. Generate it using a cryptographically secure random generator; length checks cannot prove randomness. `DATABASE_URL` is mandatory. Express also refuses startup if FastAPI integration is configured without an acceptable key. Without `FASTAPI_URL`, Express retains its existing PostgreSQL implementation. When configured, backend connection failures return 502; requests never silently fall back to another writer.
 
