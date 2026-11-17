@@ -319,4 +319,33 @@ class PortalTest {
         assertTrue(driver.findElements(testId("button-assign-escort-"+id)).isEmpty());
     }
 
+    @Test
+    void staffCanPublishAndReloadDashboardBroadcastWithoutDeliveryClaims() {
+        loginSuccessfully();
+        driver.get(baseUrl+"/broadcast");
+        heading("Broadcast Alerts");
+        assertTrue(driver.findElement(By.tagName("main")).getText().contains("Dashboard feed only; device push delivery is not configured."));
+        driver.findElement(testId("select-broadcast-type")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(testId("option-broadcast-general"))).click();
+        String title="Selenium Broadcast "+System.getenv().getOrDefault("E2E_RUN_ID","standalone")+" "+UUID.randomUUID();
+        driver.findElement(testId("input-broadcast-title")).sendKeys(title);
+        driver.findElement(testId("input-broadcast-message")).sendKeys("Disposable browser-test dashboard announcement.");
+        assertEquals("Publish Broadcast",driver.findElement(testId("button-send-broadcast")).getText());
+        driver.findElement(testId("button-send-broadcast")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[text()='Broadcast published to dashboard']")));
+        Object value=((JavascriptExecutor)driver).executeAsyncScript("""
+            const title=arguments[0],done=arguments[arguments.length-1];
+            fetch('/api/broadcast-alerts',{credentials:'include'}).then(r=>r.json())
+              .then(rows=>done(rows.find(row=>row.title===title)?.id??-1)).catch(()=>done(-1));
+            """,title);
+        long id=((Number)value).longValue();
+        assertTrue(id>0);
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(testId("card-broadcast-"+id),title));
+        assertTrue(driver.findElement(testId("card-broadcast-"+id)).getText().contains("Selenium Test User"));
+        driver.navigate().refresh();
+        heading("Broadcast Alerts");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(testId("card-broadcast-"+id),title));
+        assertFalse(driver.findElement(testId("card-broadcast-"+id)).getText().contains("Delivered"));
+    }
+
 }

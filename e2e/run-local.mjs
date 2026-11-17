@@ -98,6 +98,9 @@ try {
     const escortPrefix = `Selenium Escort ${runId} %`;
     await pool.query("DELETE FROM notifications WHERE reference_type='escort_request' AND reference_id IN (SELECT id FROM escort_requests WHERE student_name LIKE $1)", [escortPrefix]);
     await pool.query('DELETE FROM escort_requests WHERE student_name LIKE $1', [escortPrefix]);
+    const broadcastPrefix = `Selenium Broadcast ${runId} %`;
+    await pool.query("DELETE FROM notifications WHERE reference_type='broadcast_alert' AND reference_id IN (SELECT id FROM broadcast_alerts WHERE title LIKE $1)", [broadcastPrefix]);
+    await pool.query('DELETE FROM broadcast_alerts WHERE title LIKE $1', [broadcastPrefix]);
     if (userId) await pool.query('DELETE FROM users WHERE id=$1', [userId]);
     // Remove only this run's leftover location fixture, including on assertion failure.
     await pool.query('DELETE FROM campus_locations WHERE name LIKE $1', [`Selenium fixture ${runId} %`]);

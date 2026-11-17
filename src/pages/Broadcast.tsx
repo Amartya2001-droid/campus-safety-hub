@@ -1,7 +1,8 @@
+import { useAuth } from "@/contexts/AuthContext";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { formatTimeAgo, apiRequest, apiFetch } from "@/lib/api";
+import { formatTimeAgo, apiRequest, fetchBroadcasts } from "@/lib/api";
 import { Megaphone, AlertTriangle, CloudSnow, Info, Bell, Send, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +27,8 @@ const typeConfig: Record<string, { icon: LucideIcon; className: string }> = {
 };
 
 const Broadcast = () => {
+  const { user } = useAuth();
+  const isStaff = user?.role === "admin" || user?.role === "safety_official";
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [alertType, setAlertType] = useState("");
@@ -33,9 +36,10 @@ const Broadcast = () => {
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState("normal");
 
-  const { data: alertsData, isLoading } = useQuery({
-    queryKey: ["/api/broadcast-alerts"],
-    queryFn: () => apiFetch("/api/broadcast-alerts"),
+  const { data: alertsData, isLoading, isError, refetch } = useQuery({
+    queryKey: ["/api/broadcast-alerts", user?.id, user?.role],
+    enabled: !!user,
+    queryFn: fetchBroadcasts,
     refetchInterval: 10000,
     retry: false,
   });
@@ -50,24 +54,26 @@ const Broadcast = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/broadcast-alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       setAlertType("");
       setTitle("");
       setMessage("");
       setPriority("normal");
-      toast({ title: "Broadcast sent successfully" });
+      toast({ title: "Broadcast published to dashboard" });
     },
     onError: (err: Error) => {
-      toast({ title: "Failed to send broadcast", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
+      toast({ title: "Failed to publish broadcast", description: (err instanceof Error ? err.message : "Request failed"), variant: "destructive" });
     },
   });
 
   return (
-    <DashboardLayout title="Broadcast Alerts" subtitle="Send push notifications to all app users">
+    <DashboardLayout title="Broadcast Alerts" subtitle="Publish to the campus dashboard feed">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="glass-card p-5">
+        {isStaff ? <div className="glass-card p-5">
           <div className="flex items-center gap-2 mb-4">
             <Send className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold">New Broadcast</h2>
+            <p className="text-xs text-muted-foreground">Dashboard feed only; device push delivery is not configured.</p>
           </div>
           <div className="space-y-4">
             <div>
@@ -82,7 +88,7 @@ const Broadcast = () => {
                   <SelectItem value="emergency">Emergency</SelectItem>
                   <SelectItem value="weather">Weather</SelectItem>
                   <SelectItem value="advisory">Advisory</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="general" data-testid="option-broadcast-general">General</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -95,6 +101,7 @@ const Broadcast = () => {
                 placeholder="Alert headline..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                maxLength={240}
                 data-testid="input-broadcast-title"
               />
             </div>
@@ -107,6 +114,7 @@ const Broadcast = () => {
                 placeholder="Full alert message..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                maxLength={4000}
                 data-testid="input-broadcast-message"
               />
             </div>
@@ -120,32 +128,34 @@ const Broadcast = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="critical">Critical (bypasses DND)</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
-              disabled={!alertType || !title || !message || sendBroadcast.isPending}
+              disabled={!alertType || !title.trim() || !message.trim() || sendBroadcast.isPending}
               onClick={() => sendBroadcast.mutate()}
               data-testid="button-send-broadcast"
             >
               <Send className="h-4 w-4 mr-2" />
-              {sendBroadcast.isPending ? "Sending..." : "Send Broadcast"}
+              {sendBroadcast.isPending ? "Publishing..." : "Publish Broadcast"}
             </Button>
           </div>
-        </div>
+        </div> : <div className="glass-card p-5">Only staff can publish broadcasts. Campus-wide messages appear in the feed.</div>}
 
         <div className="lg:col-span-2 space-y-3">
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <Megaphone className="h-4 w-4 text-muted-foreground" />
             Recent Broadcasts
           </h2>
-          {isLoading ? (
+          {isError ? (
+            <div role="alert" className="glass-card p-4">Broadcast feed unavailable. <Button onClick={() => refetch()}>Retry</Button></div>
+          ) : isLoading ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)
           ) : alerts.length === 0 ? (
             <div className="glass-card p-12 text-center text-sm text-muted-foreground" data-testid="text-no-broadcasts">
-              No broadcasts sent yet. Create one using the form.
+              No dashboard broadcasts published yet.
             </div>
           ) : (
             alerts.map((alert) => {
