@@ -1,7 +1,8 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatTimeAgo, apiFetch, fetchDashboardSummary } from "@/lib/api";
+import { formatTimeAgo, apiFetch, fetchDashboardSummary, fetchEscortRequests } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -19,6 +20,7 @@ import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
+  const { user } = useAuth();
   const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["/api/dashboard/stats"],
     queryFn: fetchDashboardSummary,
@@ -33,9 +35,10 @@ const Index = () => {
     retry: false,
   });
 
-  const { data: escortsData } = useQuery({
-    queryKey: ["/api/escort-requests"],
-    queryFn: () => apiFetch("/api/escort-requests"),
+  const { data: escortsData, isError: escortsError, isLoading: escortsLoading, refetch: refetchEscorts } = useQuery({
+    queryKey: ["/api/escort-requests", user?.id, user?.role],
+    enabled: !!user,
+    queryFn: fetchEscortRequests,
     refetchInterval: 10000,
     retry: false,
   });
@@ -161,7 +164,11 @@ const Index = () => {
               </Link>
             </div>
             <div className="divide-y divide-border">
-              {escorts.length === 0 ? (
+              {escortsError ? (
+                <div role="alert" className="p-4">Escort requests unavailable. <Button onClick={() => refetchEscorts()}>Retry escorts</Button></div>
+              ) : escortsLoading ? (
+                <div className="p-4">Loading escort requests</div>
+              ) : escorts.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground" data-testid="text-no-escorts">
                   No escort requests
                 </div>

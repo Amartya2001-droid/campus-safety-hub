@@ -126,6 +126,33 @@ try {
           await pool.query('DELETE FROM sos_alerts WHERE id=$1', [alert.id]);
           await pool.query("UPDATE users SET role='student' WHERE id=$1", [userId]);
         }
+        const escortEndpoint = `${base}/api/escort-requests`;
+        const requested = await fetch(escortEndpoint, { method:'POST', headers:{...headers,'Content-Type':'application/json'},
+          body:JSON.stringify({student_name:'Untrusted supplied name',pickup:'Smoke pickup fixture',destination:'Smoke destination fixture'}) });
+        assert.equal(requested.status,201);
+        const escort = await requested.json();
+        try {
+          assert.equal(escort.student_name,'Smoke Test');
+          assert.equal(escort.created_by,userId);
+          assert.equal(escort.eta,null);
+          assert.equal((await (await fetch(`${base}/api/dashboard/stats`,{headers})).json()).pending_escorts,1);
+          assert.equal((await fetch(`${escortEndpoint}/${escort.id}/status`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})).status,403);
+          await pool.query("UPDATE users SET role='admin' WHERE id=$1",[userId]);
+          assert.ok((await (await fetch(escortEndpoint,{headers})).json()).some(row=>row.id===escort.id));
+          for (const status of ['assigned','in_progress','completed']) {
+            const updated = await fetch(`${escortEndpoint}/${escort.id}/status`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},
+              body:JSON.stringify({status,...(status==='assigned'?{assigned_officer:'Smoke Test'}:{})})});
+            assert.equal(updated.status,200);
+            assert.equal((await updated.json()).eta,null,'No invented arrival estimate');
+          }
+          assert.equal((await pool.query('SELECT status FROM escort_requests WHERE id=$1',[escort.id])).rows[0].status,'completed');
+          assert.equal((await pool.query("SELECT count(*)::int AS count FROM notifications WHERE reference_type='escort_request' AND reference_id=$1",[escort.id])).rows[0].count,4);
+        } finally {
+          await pool.query("DELETE FROM notifications WHERE reference_type='escort_request' AND reference_id=$1",[escort.id]);
+          await pool.query('DELETE FROM escort_requests WHERE id=$1',[escort.id]);
+          await pool.query("UPDATE users SET role='student' WHERE id=$1",[userId]);
+        }
+        console.log(`${mode}: escort ownership, staff workflow, notifications and no invented ETA passed`);
         console.log(`${mode}: SOS submission, identity, staff workflow, notifications and live-map consistency passed`);
         console.log(`${mode}: FastAPI gateway CRUD, shared persistence, authorization and validation passed`);
       }

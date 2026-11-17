@@ -1,16 +1,22 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatTimeAgo, apiRequest, apiFetch } from "@/lib/api";
+import { formatTimeAgo, apiRequest, fetchEscortRequests } from "@/lib/api";
 import { Clock, MapPin, ArrowRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Escorts = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isStaff = user?.role === "admin" || user?.role === "safety_official";
   const queryClient = useQueryClient();
-  const { data: escortsData, isLoading } = useQuery({
-    queryKey: ["/api/escort-requests"],
-    queryFn: () => apiFetch("/api/escort-requests"),
+  const { data: escortsData, isLoading, isError, refetch } = useQuery({
+    queryKey: ["/api/escort-requests", user?.id, user?.role],
+    enabled: !!user,
+    queryFn: fetchEscortRequests,
     refetchInterval: 10000,
     retry: false,
   });
@@ -22,15 +28,20 @@ const Escorts = () => {
         method: "PATCH",
         body: JSON.stringify({ status, assigned_officer, eta }),
       }),
+    onError: (error: Error) => toast({ title: "Unable to update escort", description: error.message, variant: "destructive" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/escort-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
     },
   });
 
   return (
     <DashboardLayout title="Escort Requests" subtitle="SafeWalk escort queue management">
-      {isLoading ? (
+      {isError ? (
+        <div role="alert" className="glass-card p-4">Escort requests unavailable. <Button onClick={() => refetch()}>Retry</Button></div>
+      ) : isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
         </div>
@@ -82,30 +93,35 @@ const Escorts = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  {escort.status === "pending" && (
+                  {isStaff && escort.status === "pending" && (
                     <Button
                       size="sm"
+                      disabled={updateStatus.isPending}
                       className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
                       data-testid={`button-assign-escort-${escort.id}`}
-                      onClick={() => updateStatus.mutate({ id: escort.id, status: "assigned", assigned_officer: "Officer on duty", eta: "5 min" })}
+                      onClick={() => updateStatus.mutate({ id: escort.id, status: "assigned", assigned_officer: user.name })}
                     >
                       Assign Officer
                     </Button>
                   )}
-                  {escort.status === "assigned" && (
+                  {isStaff && escort.status === "assigned" && (
                     <Button
                       size="sm"
+                      disabled={updateStatus.isPending}
                       className="text-xs"
+                      data-testid={`button-start-escort-${escort.id}`}
                       onClick={() => updateStatus.mutate({ id: escort.id, status: "in_progress" })}
                     >
                       Start Escort
                     </Button>
                   )}
-                  {escort.status === "in_progress" && (
+                  {isStaff && escort.status === "in_progress" && (
                     <Button
                       size="sm"
+                      disabled={updateStatus.isPending}
                       variant="outline"
                       className="text-xs border-success/30 text-success"
+                      data-testid={`button-complete-escort-${escort.id}`}
                       onClick={() => updateStatus.mutate({ id: escort.id, status: "completed" })}
                     >
                       Mark Completed

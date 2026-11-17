@@ -166,6 +166,10 @@ async function start() {
     return res.json(alert);
   });
 
+  if (mapBackend) {
+    app.all(["/api/escort-requests", "/api/escort-requests/:id/status"], requireAuth, mapBackend);
+  }
+
   app.get("/api/escort-requests", requireAuth, async (_req, res) => {
     const requests = await getEscortRequests();
     return res.json(requests);
