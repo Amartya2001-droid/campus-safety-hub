@@ -300,6 +300,10 @@ async function start() {
     }
   });
 
+  if (mapBackend) {
+    app.all("/api/broadcast-alerts", requireAuth, mapBackend);
+  }
+
   app.get("/api/broadcast-alerts", requireAuth, async (_req, res) => {
     const alerts = await getBroadcastAlerts();
     return res.json(alerts);

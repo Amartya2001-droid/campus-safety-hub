@@ -1,6 +1,6 @@
-# Campus safety backend — map, SOS, escorts and read models
+# Campus safety backend
 
-This service handles campus-location CRUD, SOS and escort list/create/status operations, dashboard summary counts and live-map reads through the existing Express session gateway. It uses the same PostgreSQL tables as Express; location-table initialization is supported, while Express owns user/session and remaining schema initialization. It does not seed users or replace all Express routes. Login, sessions, patrol workflow writes, broadcasts, notification reads and StarRez integration remain in Express. No Expo app or files from held PR #1 are included.
+This service handles campus-location CRUD, SOS and escort list/create/status operations, dashboard summary counts, live-map reads and broadcast feed publishing through the existing Express session gateway. It uses the same PostgreSQL tables as Express; location-table initialization is supported, while Express owns user/session and remaining schema initialization. It does not seed users or replace all Express routes. Login, sessions, patrol workflow writes, notification reads and StarRez integration remain in Express. No Expo app or files from held PR #1 are included.
 
 ## Run locally
 
@@ -78,6 +78,16 @@ Creation and each status change commit their notification in the same transactio
 
 The UI assigns the signed-in staff member's real account name and no longer invents `Officer on duty` or `5 min`. It hides staff actions from non-staff, disables pending mutations and surfaces errors. Queue and preview data are validated and cached by account/role, with load/error/Retry states rather than false empty results. This does not migrate other legacy endpoints or certify real-world escort availability. The Express-only fallback remains its legacy implementation and is not a complete authorization/security boundary.
 
+## Broadcast feed slice
+
+With `FASTAPI_URL` enabled, `GET/POST /api/broadcast-alerts` also use FastAPI and the existing `users`, `broadcast_alerts` and `notifications` tables. Staff (admin/safety official) publish; students/faculty read the campus-wide feed. Every request verifies the signed actor against the current database account/role. Sender name and creator ID always come from that account, not the body.
+
+Supported types are emergency/weather/advisory/general; priority is normal/critical. Trimmed titles are 1–240 characters and messages 1–4000. The title limit keeps the prefixed notification title within its existing database column. Unknown fields, forged authors/creator IDs/delivery metrics and non-campus target values are rejected. New messages support only `All Users`, meaning the intended authenticated dashboard audience. Legacy targeted messages remain staff-visible but are withheld from all non-staff until an audience model is separately implemented. Ordering is deterministic by creation time and ID.
+
+Publication and a local notification record commit in one transaction; notification failure rolls back the broadcast. Critical maps to the stored emergency notification classification only. The legacy `sent_by` field identifies the publishing account; it is not a transport delivery receipt. The notification stores a 200-character message excerpt. No schema, dependency or external push provider is added.
+
+The UI now says Publish Broadcast / published to dashboard, explains dashboard-only publication, and makes no device-push or Do Not Disturb bypass claim. Non-staff have no publication form; pending submissions are disabled. The feed validates responses, keys its cache by account/role, and offers explicit loading/error/Retry states instead of false empty data. Device delivery, audience targeting, delivery counts/receipts, DND bypass, edit/delete and production dispatch are outside this slice. The Express-only fallback remains legacy, not a completed authorization migration.
+
 ## Verification
 
 Use a disposable database, never production. Tests isolate their tables in random schemas and drop them afterward:
@@ -101,4 +111,4 @@ Key pins: FastAPI 0.162.5, Starlette 1.10.0, PyJWT 2.15.1, psycopg/psycopg-binar
 
 ## Slice boundary / live status
 
-Not live yet. This delivers campus-map and SOS persistence/validation/authorization, transactional SOS notifications, the escort queue workflow, a role-scoped dashboard summary/live overlay read model and existing frontend wiring. No new identity system, mobile app, external service integration, all-route API migration, production deployment or operational safety certification is claimed. Future backend expansion should use separate reviewed slices. Needed to deploy: privately provisioned `SECRET_KEY`, `DATABASE_URL`, existing `SESSION_SECRET`, approved HTTPS/internal service topology, removal of demo credentials, and production security review. No third-party API key is required for this slice.
+Not live yet. This delivers campus-map and SOS persistence/validation/authorization, transactional SOS notifications, the escort queue workflow, staff broadcast publishing, a role-scoped dashboard summary/live overlay read model and existing frontend wiring. No new identity system, mobile app, external service integration, all-route API migration, production deployment or operational safety certification is claimed. Future backend expansion should use separate reviewed slices. Needed to deploy: privately provisioned `SECRET_KEY`, `DATABASE_URL`, existing `SESSION_SECRET`, approved HTTPS/internal service topology, removal of demo credentials, and production security review. No third-party API key is required for this slice.

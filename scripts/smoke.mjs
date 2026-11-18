@@ -152,6 +152,36 @@ try {
           await pool.query('DELETE FROM escort_requests WHERE id=$1',[escort.id]);
           await pool.query("UPDATE users SET role='student' WHERE id=$1",[userId]);
         }
+        const broadcasts = `${base}/api/broadcast-alerts`;
+        const announcement = {type:'general',title:`Smoke broadcast ${randomUUID()}`,message:'Dashboard-only smoke fixture',priority:'critical'};
+        const publishOptions = {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(announcement)};
+        assert.equal((await fetch(broadcasts,publishOptions)).status,403);
+        await pool.query("UPDATE users SET role='admin' WHERE id=$1",[userId]);
+        const publication = await fetch(broadcasts,publishOptions);
+        assert.equal(publication.status,201);
+        const broadcast = await publication.json();
+        let legacyBroadcastId;
+        try {
+          assert.equal(broadcast.sent_by,'Smoke Test');
+          assert.equal(broadcast.created_by,userId);
+          assert.equal(broadcast.target,'All Users');
+          assert.equal(broadcast.delivery_count,undefined);
+          const notice = await pool.query("SELECT type FROM notifications WHERE reference_type='broadcast_alert' AND reference_id=$1",[broadcast.id]);
+          assert.equal(notice.rows[0].type,'emergency');
+          const legacy = await pool.query("INSERT INTO broadcast_alerts(type,title,message,sent_by,target) VALUES ('general','Smoke targeted fixture','Fixture','Smoke fixture','Faculty') RETURNING id");
+          legacyBroadcastId=legacy.rows[0].id;
+          assert.ok((await (await fetch(broadcasts,{headers})).json()).some(row=>row.id===legacyBroadcastId));
+          await pool.query("UPDATE users SET role='student' WHERE id=$1",[userId]);
+          const readerFeed=await (await fetch(broadcasts,{headers})).json();
+          assert.ok(readerFeed.some(row=>row.id===broadcast.id));
+          assert.ok(!readerFeed.some(row=>row.id===legacyBroadcastId));
+        } finally {
+          await pool.query("DELETE FROM notifications WHERE reference_type='broadcast_alert' AND reference_id=$1",[broadcast.id]);
+          await pool.query('DELETE FROM broadcast_alerts WHERE id=$1',[broadcast.id]);
+          if(legacyBroadcastId) await pool.query('DELETE FROM broadcast_alerts WHERE id=$1',[legacyBroadcastId]);
+          await pool.query("UPDATE users SET role='student' WHERE id=$1",[userId]);
+        }
+        console.log(`${mode}: staff publication, trusted author, atomic notice and campus-wide feed scope passed`);
         console.log(`${mode}: escort ownership, staff workflow, notifications and no invented ETA passed`);
         console.log(`${mode}: SOS submission, identity, staff workflow, notifications and live-map consistency passed`);
         console.log(`${mode}: FastAPI gateway CRUD, shared persistence, authorization and validation passed`);

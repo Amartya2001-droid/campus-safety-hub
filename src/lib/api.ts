@@ -118,3 +118,27 @@ export async function fetchEscortRequests(): Promise<EscortRequest[]> {
   }
   return data;
 }
+
+export interface BroadcastAlert {
+  id: number;
+  type: "emergency" | "weather" | "advisory" | "general";
+  title: string;
+  message: string;
+  sent_by: string;
+  priority: "normal" | "critical";
+  target: string;
+  created_at: string;
+}
+
+export async function fetchBroadcasts(): Promise<BroadcastAlert[]> {
+  const data = await apiFetch("/api/broadcast-alerts");
+  if (!Array.isArray(data) || !data.every((row: BroadcastAlert) => row &&
+      Number.isSafeInteger(row.id) && row.id > 0 &&
+      ["emergency", "weather", "advisory", "general"].includes(row.type) &&
+      ["normal", "critical"].includes(row.priority) &&
+      [row.title, row.message, row.sent_by, row.target].every(value => typeof value === "string") &&
+      typeof row.created_at === "string" && Number.isFinite(Date.parse(row.created_at)))) {
+    throw new Error("Broadcast feed unavailable");
+  }
+  return data;
+}

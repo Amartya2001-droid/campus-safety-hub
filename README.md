@@ -53,9 +53,13 @@ cd functions && npm ci && npm run build
 
 GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a disposable PostgreSQL service. Vitest currently includes only the original example test; the runtime smoke test supplies meaningful coverage for the Day 1 fixes. Functions have a build check, not a validated integration suite.
 
-## FastAPI campus-map, SOS, escort and dashboard service
+## FastAPI service
 
-A clean [FastAPI service](backend/README.md) implements campus-location CRUD plus SOS and escort list/create/status operations and role-scoped dashboard summary/live-map reads against the existing PostgreSQL tables, with validated payloads, role authorization and transactional SOS notifications. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes to use it through the existing Campus Map and SOS Alerts UIs. The service refuses startup without a suitable key. Live overlays exclude unusable legacy coordinates and expired patrols, and show only records allowed by the authenticated user’s role/ownership. Overlay failures show Unavailable/stale warnings and Retry. The escort queue enforces ownership/staff transitions and atomic notifications; assignment uses the staff account name and does not invent an ETA. It does not replace login or the remaining Express routes. Dashboard summary errors are visible instead of appearing as zero counts; StarRez is labeled Configured, which does not claim verified connectivity. See the backend README for installation, trust boundaries, tests and exact configuration. No external API key is needed; no deployment is claimed.
+The optional clean [FastAPI service](backend/README.md) handles campus-location CRUD, SOS and escort list/create/status operations, dashboard summary/live-map reads, and staff broadcast feed publishing through the existing Express session gateway and PostgreSQL tables. Set `FASTAPI_URL` on Express and privately supply the same required `SECRET_KEY` to both processes. FastAPI refuses startup without a suitable key. See the backend README for exact installation, configuration, trust boundaries and tests.
+
+The migrated paths enforce role/ownership checks. Live overlays exclude unusable legacy coordinates and expired patrols, with explicit Unavailable/stale/Retry states. The escort UI uses the staff account name and does not invent an ETA. Broadcast publication stores a dashboard message and local notification atomically; it does not provide device push delivery or DND bypass. The dashboard summary reports StarRez configuration, not verified connectivity.
+
+Login and the remaining Express routes are not replaced; the broader migration/security review is incomplete. No external API key is needed for these slices, and no deployment is claimed.
 
 ## Browser end-to-end tests
 

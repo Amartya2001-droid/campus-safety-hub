@@ -169,4 +169,6 @@ def create_app() -> FastAPI:
     register_live_map_routes(app, connect, actor)
     from backend.escorts import register_escort_routes
     register_escort_routes(app, connect, actor)
+    from backend.broadcasts import register_broadcast_routes
+    register_broadcast_routes(app, connect, actor)
     return app
