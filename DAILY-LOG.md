@@ -139,3 +139,23 @@ Will do tomorrow:
 - Continue the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
 
 Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
+
+## Day 8 — campus-safety-hub
+
+Date: Nov 17, 2026. Merged-main verification first, then the bounded dashboard broadcast slice.
+
+Did:
+- Pulled latest main after reviewer merges of [PR #15](https://github.com/Amartya2001-droid/campus-safety-hub/pull/15) and [PR #16](https://github.com/Amartya2001-droid/campus-safety-hub/pull/16). Verified exact merged commit `9a45a2f` green before feature work: [CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/44191374336) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/44191374074) both succeeded.
+- Delivered the next bounded feature in [PR #17](https://github.com/Amartya2001-droid/campus-safety-hub/pull/17): FastAPI now handles broadcast feed listing/publication through the existing authenticated gateway and PostgreSQL tables when FASTAPI_URL is enabled. Only staff publish; author/creator identity comes from the current database account. Readers see campus-wide All Users messages, while legacy targeted messages remain staff-only until an audience model is separately implemented. Types/priorities/text limits and unknown/forged fields are validated. Publication and the local notification commit atomically; notification failure rolls back the broadcast. No schema, dependency, identity system or external push provider was added.
+- Made publication semantics honest in [PR #17](https://github.com/Amartya2001-droid/campus-safety-hub/pull/17): the UI says Publish Broadcast / published to dashboard, explains dashboard-only publication, hides non-staff forms and removes unverified push/DND-bypass claims. Critical is a stored classification, not a delivery capability. Account/role-scoped caches, response validation and loading/error/Retry states prevent cross-account legacy data or failed reads from becoming false empty feeds. README/backend/E2E docs state setup and boundaries. Device delivery, broader audience targeting, receipts/counts, DND bypass and edit/delete are outside this slice; the optional Express fallback remains legacy.
+- Verified [PR #17](https://github.com/Amartya2001-droid/campus-safety-hub/pull/17) before opening: 111 real PostgreSQL pytest cases (27 new broadcast cases), 21 frontend tests (6 new focused feed cases), lint/typecheck/build, 3 gateway tests and the deterministic production session regression passed. Real development/production smoke checks cover forbidden reader publication, database-derived staff authorship, notification classification and public versus legacy targeted feed scope. All 16 production HTTPS Java/Selenium cases passed, including the real publish form, persisted authorship/feed record and reload without a delivery claim. [PR CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/44195474519) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/44195474288) are green. Temporary broadcast/notification/account fixtures, local app processes and test PostgreSQL were cleaned up/stopped. The agent merged no PR and left held PR #1 untouched.
+
+Blocked on:
+- Amartya review/merge of PR #17 and review of this log-only PR. Remaining Express endpoints/fallback authorization, audience targeting and broader app migration remain outside the dashboard-only publication slice.
+- Production provisioning remains Amartya's call: privately supply SECRET_KEY, DATABASE_URL and SESSION_SECRET; approve FASTAPI_URL/HTTPS/private-network topology, remove demo credentials, complete production security review and approve a deployment URL. No third-party API key is required for the delivered slice. No production secrets or API keys were invented, committed or posted, and no deployment was performed.
+
+Will do tomorrow:
+- Address review feedback and verify reviewer-approved merges on main with backend, session and browser regression coverage.
+- Continue the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
+
+Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
