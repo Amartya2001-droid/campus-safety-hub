@@ -1,0 +1,212 @@
+{
+  "audit": "Ship week Day 1",
+  "date": "2026-11-24",
+  "source_commit": "673b8c8843ea81796a6dd0be46b5f9f430dbba33",
+  "setup": {
+    "fresh_checkout": true,
+    "fresh_npm_ci": true,
+    "fresh_python_venv": true,
+    "pip_check_exit": 0,
+    "fresh_postgresql_cluster": true,
+    "node": "20.20.2",
+    "npm": "10.8.2",
+    "python": "3.12.14",
+    "postgresql": "17.11",
+    "ci_postgresql": "16 (not rerun locally)",
+    "jdk": "21.0.13",
+    "maven": "3.9.11",
+    "chromium": "156.0.8078.79",
+    "chromedriver": "156.0.8078.79",
+    "local_browser_sandbox": "explicitly disabled in isolated container; hosted workflow leaves enabled",
+    "tls": "temporary self-signed certificate accepted only for local browser; Maven/network verification enabled"
+  },
+  "suites": {
+    "pytest": {
+      "collected": 111,
+      "passed": 111,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontend": {
+      "collected": 21,
+      "passed": 21,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "selenium": {
+      "collected": 16,
+      "passed": 16,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "gateway": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "session": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    }
+  },
+  "pytest_modules": {
+    "backend.tests.test_app": 19,
+    "backend.tests.test_broadcasts": 27,
+    "backend.tests.test_dashboard": 10,
+    "backend.tests.test_escorts": 19,
+    "backend.tests.test_live_map": 19,
+    "backend.tests.test_sos": 17
+  },
+  "frontend_files": {
+    "src/test/broadcasts.test.tsx": 6,
+    "src/test/dashboard.test.tsx": 3,
+    "src/test/escorts.test.tsx": 6,
+    "src/test/example.test.ts": 1,
+    "src/test/live-map.test.tsx": 5
+  },
+  "selenium_cases": [
+    "escortCanBeAssignedStartedAndCompletedWithoutInventedEta",
+    "logoutInvalidatesSessionAndProtectedRouteReload",
+    "validCredentialsOpenDashboardAndAuthenticateSession",
+    "sosAlertCanBeAssignedAndResolvedThroughDashboard",
+    "invalidCredentialsStaySignedOut",
+    "staffCanPublishAndReloadDashboardBroadcastWithoutDeliveryClaims",
+    "campusMapWritesThroughRebuiltBackend",
+    "directSpaRoutesAndRefreshWork(String, String)[1]",
+    "directSpaRoutesAndRefreshWork(String, String)[2]",
+    "directSpaRoutesAndRefreshWork(String, String)[3]",
+    "directSpaRoutesAndRefreshWork(String, String)[4]",
+    "directSpaRoutesAndRefreshWork(String, String)[5]",
+    "directSpaRoutesAndRefreshWork(String, String)[6]",
+    "directSpaRoutesAndRefreshWork(String, String)[7]",
+    "directSpaRoutesAndRefreshWork(String, String)[8]",
+    "sessionSurvivesReloadAndDirectNavigation"
+  ],
+  "steps": [
+    {
+      "name": "lint",
+      "exit_code": 0
+    },
+    {
+      "name": "typecheck",
+      "exit_code": 0
+    },
+    {
+      "name": "frontend",
+      "exit_code": 0
+    },
+    {
+      "name": "build",
+      "exit_code": 0
+    },
+    {
+      "name": "pytest",
+      "exit_code": 0
+    },
+    {
+      "name": "gateway",
+      "exit_code": 0
+    },
+    {
+      "name": "session",
+      "exit_code": 0
+    },
+    {
+      "name": "smoke-express",
+      "exit_code": 0
+    },
+    {
+      "name": "smoke-fastapi",
+      "exit_code": 0
+    },
+    {
+      "name": "selenium",
+      "exit_code": 0
+    }
+  ],
+  "smoke_scenarios": {
+    "express": {
+      "development": "pass",
+      "production": "pass"
+    },
+    "fastapi_gateway": {
+      "development": "pass",
+      "production": "pass"
+    }
+  },
+  "functions": {
+    "build_exit": 0,
+    "behavioral_tests": "No test script/files discovered; not a behavioral verification"
+  },
+  "report_hashes": {
+    "pytest.xml": "a805304e3253e05659ebdc82490af2e35b28c0dda00eac6bcc78a948dac9b7a9",
+    "vitest.json": "0b17e12ce7a06331672cfea3de9ab26aa82b8da604e23628c784eadd38965905",
+    "gateway.log": "aa2a3e465f65dc9da227d8e3ff47955640f5cf9881d3e8adbf38f14f94f09ee8",
+    "session.log": "2ef16ec5d5de6c28f795d13b507d9c3734adf21ced2c3756e9481ef4b9885b1e",
+    "smoke-express.log": "bbbbf2a7cd202e6bb5a10553339980d48538aca8b80713c1c8c3feee9d98a954",
+    "smoke-fastapi.log": "3b8e7bf2aeea516926f4871af58e77b9b7400cfdefdd7b9bcb6a72b77d57ed06",
+    "selenium.log": "e91f608aa67c77cca7380b99cc3e2f49824edfdc89aefcdf4969d52b8933c84c",
+    "surefire.xml": "6d005b924b8af703d560ad6312949270e831d5c5925bfaeec09f5c3cc1a014ee"
+  },
+  "commands": {
+    "install": "npm ci; python -m venv <venv>; <venv>/bin/python -m pip install -r backend/requirements-dev.txt; <venv>/bin/python -m pip check",
+    "frontend": "node node_modules/vitest/vitest.mjs run --reporter=json --outputFile=<artifacts>/vitest.json",
+    "pytest": "TEST_DATABASE_URL=<disposable PostgreSQL URL> <venv>/bin/python -m pytest backend/tests -q --junitxml=<artifacts>/pytest.xml",
+    "gateway": "node --import tsx --test --test-reporter=tap scripts/campus-backend.test.mjs",
+    "session": "DATABASE_URL=<disposable PostgreSQL URL> node --test --test-reporter=tap scripts/session-persistence.test.mjs",
+    "smoke-express": "DATABASE_URL=<disposable PostgreSQL URL> npm run test:smoke",
+    "smoke-fastapi": "DATABASE_URL=<disposable PostgreSQL URL> PYTHON=<venv>/bin/python node scripts/backend-smoke.mjs",
+    "selenium": "DATABASE_URL=<disposable PostgreSQL URL> PYTHON=<venv>/bin/python node e2e/run-local.mjs",
+    "functions": "cd functions && npm ci && npm run build",
+    "quality_gates": [
+      "npm run lint",
+      "npm run typecheck",
+      "npm run build"
+    ]
+  },
+  "evidence_notes": [
+    "Counts parsed from fresh pytest JUnit XML, Vitest JSON, Maven Surefire XML and Node TAP reports.",
+    "All source tests/runners ran unchanged from source_commit. No Day 10 receipt files were included.",
+    "Raw reports/logs remain in the execution workspace; sanitized counts, inventories and SHA-256 digests are committed here.",
+    "Smoke results count modes/scenarios, not collected test cases. Functions build has no pass/fail/skip test count.",
+    "The local PostgreSQL major version was 17; hosted CI specifies 16. No local PostgreSQL 16 rerun was performed.",
+    "No production, Firebase, StarRez, device delivery or DND-bypass verification is claimed."
+  ],
+  "warnings": {
+    "eslint_errors": 0,
+    "eslint_warnings": 11,
+    "pytest_warnings": 1,
+    "pytest_warning": "Starlette TestClient httpx compatibility is deprecated; no failing test.",
+    "build_warning": "Vite bundle size warning; not a test failure.",
+    "frontend_example": "One of 21 cases only asserts true === true; it provides no behavior coverage."
+  },
+  "absent_on_main": [
+    "backend/receipts.py",
+    "backend/migrations/001_broadcast_dashboard_receipts.sql",
+    "backend/tests/test_receipts.py",
+    "src/components/BroadcastReceipt.tsx",
+    "src/test/receipts.test.tsx"
+  ],
+  "selenium_route_checks": [
+    "/",
+    "/alerts",
+    "/escorts",
+    "/reports",
+    "/broadcast",
+    "/patrols",
+    "/map",
+    "/settings"
+  ],
+  "selenium_scope": "Admin account only; 8 navigation/refresh invocations and 8 functional cases. SOS/escort fixture creation uses API, not student UI."
+}
