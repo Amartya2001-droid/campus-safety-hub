@@ -159,3 +159,62 @@ Will do tomorrow:
 - Continue the next bounded dashboard/backend slice from the next brief, preserving the production provisioning boundary.
 
 Live status: not live yet — blocked by production provisioning/security review and an approved deployment URL. Verification used disposable local/CI data only.
+
+## Ship week — Day 1 — campus-safety-hub
+
+Standing rules: branch + PR for every change; tests pass before opening a PR; never commit secrets or invent credentials, licences or metrics; keep README/live status honest; report here, then stop. Never self-merge or touch held PR #1.
+
+Date: Nov 24, 2026. Testing-first audit; this is the new ship week, not a continuation of the original program's Day 1.
+
+Did:
+- Pulled and audited exact main [673b8c8](https://github.com/Amartya2001-droid/campus-safety-hub/commit/673b8c8843ea81796a6dd0be46b5f9f430dbba33). Main has not advanced since PR #18. Its last hosted [CI](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/44412191683) and [Selenium](https://github.com/Amartya2001-droid/campus-safety-hub/actions/runs/44412190531) runs are green; those historical results were not substituted for today's local runs.
+- Ran every configured test suite/CI gate against unchanged [main source](https://github.com/Amartya2001-droid/campus-safety-hub/commit/673b8c8843ea81796a6dd0be46b5f9f430dbba33), in a separate clean worktree with fresh npm installs, a fresh Python venv and a newly initialized disposable PostgreSQL cluster. Parsed actual pytest JUnit XML, Vitest JSON, Surefire XML and Node TAP output. Committed sanitized [results and inventory](audit/ship-week-day1/results.json), including source SHA, runtimes, commands, case inventories and raw-report SHA-256 digests. No runtime/test-code fix was needed or made.
+- Inspected suite boundaries on [main](https://github.com/Amartya2001-droid/campus-safety-hub/commit/673b8c8843ea81796a6dd0be46b5f9f430dbba33): all 16 Selenium invocations use the admin login; eight are route-heading/refresh checks. Corrected documentation-only stale figures (README said only the example Vitest test existed; E2E README still cited 13 cases). Preserved the separate uncommitted Day 10 candidate without running or copying it into the audit. Broadcast receipt implementation, migration, UI and tests are absent from main, so its candidate counts do not belong in this audit.
+
+### Observed results and evidence
+
+| Suite/check | Collected / unit | Pass | Fail | Error | Skip |
+| --- | --- | ---: | ---: | ---: | ---: |
+| PostgreSQL pytest | 111 cases, 6 modules | 111 | 0 | 0 | 0 |
+| Frontend Vitest | 21 cases, 5 files | 21 | 0 | 0 | 0 |
+| Java/Maven/Selenium | 16 invocations | 16 | 0 | 0 | 0 |
+| Node gateway tests | 3 cases | 3 | 0 | 0 | 0 |
+| PostgreSQL session regression | 1 case | 1 | 0 | 0 | 0 |
+| Express smoke | development + production scenarios | 2 | 0 | — | — |
+| Express/FastAPI gateway smoke | development + production scenarios | 2 | 0 | — | — |
+| Lint, frontend typecheck, Vite build | gates, not test cases | exit 0 each | — | — | — |
+| Functions install/build | compile gate, not behavioral tests | exit 0 | — | — | — |
+
+No collected test was skipped or marked todo; no observed test failed. Absent implementations/suites are **not** counted as skipped or as passing zero tests. Smoke counts above are mode scenarios, not assertion counts. Vitest includes one tautological `expect(true).toBe(true)` example; only the other 20 cases assert application behavior, with mocked network/auth/layout dependencies (and a mocked map renderer where applicable). Functions has no configured behavioral test suite; compiling it does not verify Firebase behavior.
+
+Reproducible setup actually used:
+- Node 20.20.2 (official archive checksum verified), npm 10.8.2, Python 3.12.14; fresh `npm ci`, fresh `pip install -r backend/requirements-dev.txt`, and `pip check` succeeded. Functions received its own fresh npm install/build.
+- Real PostgreSQL 17.11 on loopback, in a fresh audit-only data directory. `TEST_DATABASE_URL` is required by pytest: fixtures create/drop random schemas and need schema/table permissions. `DATABASE_URL` is required by the smoke/E2E runners: Express creates/seeds tables, so this must be disposable data. Hosted CI specifies PostgreSQL 16; a local PostgreSQL 16 rerun was **not** performed.
+- Full JDK 21.0.13 (not merely a JRE), Maven 3.9.11, matching Chromium/ChromeDriver 156.0.8078.79, OpenSSL, and free ports 5000/8101/5443. The existing runner creates real production Express + FastAPI services and a temporary local HTTPS proxy for Secure session cookies, with runtime-generated fixture credentials/keys/certificate. Maven used the inherited authorized proxy settings with TLS verification enabled. The isolated local browser needed writable profile/cache directories and explicit `CHROME_NO_SANDBOX=true`; hosted CI leaves sandboxing enabled. The self-signed certificate exception was local-browser-only.
+- Main commands: `python -m pytest backend/tests -q --junitxml=...`; `node node_modules/vitest/vitest.mjs run --reporter=json --outputFile=...`; `node --import tsx --test scripts/campus-backend.test.mjs`; `node --test scripts/session-persistence.test.mjs`; `npm run test:smoke`; `PYTHON=<venv>/bin/python node scripts/backend-smoke.mjs`; `PYTHON=<venv>/bin/python node e2e/run-local.mjs`. Exact command inventory and counts are in the linked JSON. Raw logs/reports remain in the execution workspace; only sanitized evidence is committed.
+- Non-failing findings: ESLint 0 errors / 11 warnings; pytest 1 Starlette/httpx deprecation warning; Vite bundle-size warning. These are not failed or skipped cases. No current dependency-advisory/security audit was performed; a successful install is not proof of vulnerability freedom.
+- Verified cleanup: zero temporary `example.invalid` users, zero test/session schemas, zero SOS/escort/broadcast fixture rows in the fresh database. The runner stopped its app/TLS processes and removed its temporary certificate; the audit PostgreSQL cluster was stopped afterward. No production data or real external account was used.
+
+### Coverage limits / not yet verified
+
+- **Selenium scope:** eight direct routes (`/`, `/alerts`, `/escorts`, `/reports`, `/broadcast`, `/patrols`, `/map`, `/settings`) render and refresh. Functional cases cover valid/invalid admin login, session persistence, logout, map location creation, SOS Assign/En Route/Resolve with map changes, escort Assign/Start/Completed with summary changes, and real dashboard broadcast publication/reload. SOS and escort fixture creation uses the API, not a student form. There is no student/faculty/safety-official browser fixture, multi-account browser privacy test, complete patrol assignment/accept/decline/check-in/depart/end flow, full Settings workflow, or browser outage/recovery matrix. Heading checks alone do not establish those features work.
+- **Receipts:** Day 10 dashboard delivery receipts never landed. Main has no receipt migration/table initialization, endpoint, client component, unique-account counting or reader/staff receipt tests. Main only stores broadcast publication plus a local notification. There is no verified device push delivery, DND bypass, human-read proof, audience delivery count or receipt guarantee. The preserved candidate is unmerged and not verified by today's runs; do not treat it as shipped.
+- **Legacy boundaries:** source inspection shows notification list/count/mark-read queries are global rather than user-scoped, while patrol check-in reads/departure updates do not visibly enforce ownership. Their cross-user behavior was not exercised by these suites. Express-only fallback handlers differ from migrated FastAPI authorization and are not a complete privacy boundary. These are specific missing negative tests/source-indicated release risks, not claims of an exploit reproduced today.
+- **Remaining verification gaps:** the main typecheck configuration covers `src`, not all server TypeScript; Firebase Functions have build coverage only; authorized StarRez responses, Firebase Auth/Firestore rules/Functions/notification behavior, map-tile availability, mobile/accessibility/browsers beyond desktop Chrome, load/performance, and deployment/proxy behavior have no verification in this audit. A secondary dashboard panel still says `StarRez Connected` based on configuration alone; the summary/API correctly distinguish configuration from verified connectivity. That panel copy is an unverified claim to fix, not evidence of a working integration.
+- **Production/security:** the Express development session-secret fallback, demo-account seeding, password retention in sessions for StarRez forwarding, legacy access controls and external URL handling still need reviewed hardening. Passing local tests does not approve production readiness.
+
+### Prioritized Days 2–5 fix list
+
+1. **Day 2 — P0: establish and enforce account/role boundaries.** Add real student/faculty/safety-official and two-account browser/gateway cases, not just signed-backend fixtures. Reproduce and fix notification read/mark-read isolation and patrol check-in ownership in separately reviewed pieces. Acceptance: another account's private data/actions are denied, each authorized role's own flow works, logout/relogin cannot reuse another account's private cache, and regressions run in CI. Correct the misleading StarRez panel wording and retain the tested dashboard-only broadcast wording.
+2. **Day 3 — P1: finish stored dashboard receipts as an explicitly bounded feature.** Review the preserved candidate rather than assuming it works. Define acknowledgement semantics, use a repeatable migration with unique message/account records and server timestamps, restrict aggregate counts to publishing staff and readers to their own scope, and verify retries/concurrency, rollback, cross-account access, visibility/confirmation and refresh persistence with PostgreSQL/frontend/two-account Selenium tests. Do not claim device delivery, reading or DND bypass. Open no feature PR until all required suites are green.
+3. **Day 4 — P1: cover operational paths that route smoke misses.** Exercise patrol assignment → student accept/decline → check-in/depart → end/expiry, and notification state consistency/error recovery. Add a server TypeScript check and meaningful Functions unit/emulator tests as separate bounded pieces; keep Functions build success distinct from behavioral coverage. Re-run required gates on CI's PostgreSQL 16 as well as the local setup, and remove the tautological test once meaningful replacement coverage exists.
+4. **Day 5 — P0 release gate / P2 cleanup:** review session-secret fail-closed behavior, demo-user removal, StarRez credential/URL handling, current dependency advisories and remaining scope gaps; address warnings only with verified, bounded fixes. Perform an approved staging/production-topology rehearsal only after Amartya provisions/approves it. Acceptance: a documented go/no-go based on real evidence, no remaining P0 authorization/security issue, and an owner-blocked result instead of invented configuration if provisioning is still unavailable.
+
+Blocked on:
+- **Owner-blocked — Amartya:** production `SECRET_KEY`, `DATABASE_URL`, `SESSION_SECRET`, approved HTTPS/private-network/proxy topology and `FASTAPI_URL`, demo-account policy, security review and a live URL/deployment decision. Authorized StarRez/Firebase project/service configuration and real integration validation also require his approved access. No key values should be placed in reports or PRs; no production deployment is authorized by this audit.
+- **Engineering work, not provisioning:** receipts absent from main, missing cross-user/operational E2E coverage, legacy authorization gaps and Functions/server-check coverage. These remain pending the prioritized fix work; zero skips does not mean these are verified.
+
+Will do tomorrow:
+- Start the Day 2 P0 role/ownership regression work from latest main, one verified fix per PR, after this audit is reviewed.
+
+Live status: not live yet — owner-blocked on production provisioning/security review and an approved deployment URL. This audit ran disposable local/CI-style services only. No code PR, self-merge, production change, secret/key commit, or change to held PR #1 was made. The unfinished Day 10 work remains preserved separately. Stop after posting this report.

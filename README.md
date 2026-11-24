@@ -51,7 +51,7 @@ DATABASE_URL=postgresql://postgres@localhost:5432/postgres npm run test:smoke
 cd functions && npm ci && npm run build
 ```
 
-GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a disposable PostgreSQL service. Vitest currently includes only the original example test; the runtime smoke test supplies meaningful coverage for the Day 1 fixes. Functions have a build check, not a validated integration suite.
+GitHub Actions runs these checks on pushes and PRs using Node.js 20 and a disposable PostgreSQL service. The ship-week Day 1 audit (Nov 24, 2026) collected 21 frontend tests across five files, including one original tautological example; the runtime smoke tests supply additional gateway/session coverage. See [DAILY-LOG.md](DAILY-LOG.md) and [audit evidence](audit/ship-week-day1/results.json) for actual counts and verification gaps. Functions have a build check, not a validated integration suite.
 
 ## FastAPI service
 
