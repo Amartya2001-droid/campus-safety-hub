@@ -97,6 +97,85 @@ class PortalTest {
         driver.findElement(testId("button-login")).click();
     }
 
+    private void loginRole(String label, String role) {
+        driver.findElement(testId("input-email")).sendKeys(requiredEnvironment("E2E_" + label + "_EMAIL"));
+        driver.findElement(testId("input-password")).sendKeys(requiredEnvironment("E2E_" + label + "_PASSWORD"));
+        driver.findElement(testId("select-role")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(testId("option-role-" + role))).click();
+        driver.findElement(testId("button-login")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(testId("text-username")));
+    }
+
+    private Map<?, ?> api(String path, String method) {
+        Object raw = ((JavascriptExecutor) driver).executeAsyncScript("""
+            const path=arguments[0], method=arguments[1], done=arguments[arguments.length-1];
+            fetch(path,{method,credentials:'include'}).then(async r => done({status:r.status,body:await r.json()}))
+              .catch(() => done({status:-1}));
+            """, path, method);
+        assertInstanceOf(Map.class, raw);
+        return (Map<?, ?>) raw;
+    }
+
+    @ParameterizedTest
+    @CsvSource({"OWNER, student, true", "OTHER, student, false", "FACULTY, faculty, false", "STAFF, safety_official, true"})
+    void realRolesRespectPatrolReadAndWriteBoundaries(String label, String role, boolean visible) {
+        loginRole(label, role);
+        assertEquals(200, sessionStatus());
+        String patrolId=requiredEnvironment("E2E_PATROL_ID");
+        String checkinId=requiredEnvironment("E2E_CHECKIN_ID");
+        Map<?, ?> result=api("/api/patrol-sessions/"+patrolId+"/checkins", "GET");
+        assertEquals(visible ? 200 : 404, ((Number) result.get("status")).intValue());
+        if (!visible) assertFalse(result.get("body").toString().contains("Private residence"));
+        if (!label.equals("OWNER")) {
+            assertEquals(404, ((Number) api("/api/patrol-checkins/"+checkinId+"/depart", "PATCH").get("status")).intValue());
+        }
+        driver.get(baseUrl+"/patrols");
+        heading("Campus Patrol");
+        if (visible) {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(testId("checkin-"+checkinId)));
+            assertEquals(label.equals("OWNER"), !driver.findElements(testId("button-depart-"+checkinId)).isEmpty());
+            assertFalse(driver.findElement(testId("checkin-"+checkinId)).getText().contains("Departed:"));
+        } else {
+            wait.until(d -> d.findElements(By.cssSelector(".animate-pulse")).isEmpty());
+            assertTrue(driver.findElements(testId("patrol-session-"+patrolId)).isEmpty());
+        }
+    }
+
+    @Test
+    void switchingStudentAccountsDoesNotReusePrivatePatrolCache() {
+        loginRole("OWNER","student");
+        driver.get(baseUrl+"/patrols");
+        String patrolId=requiredEnvironment("E2E_PATROL_ID");
+        String checkinId=requiredEnvironment("E2E_CHECKIN_ID");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(testId("checkin-"+checkinId)));
+        driver.findElement(testId("button-logout")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(testId("input-email")));
+        // Keep this document/React Query client alive across login. Delay account B's
+        // query and watch the DOM so a transient leak cannot hide behind a fast refetch.
+        ((JavascriptExecutor)driver).executeScript("""
+            const patrolId=arguments[0];
+            window.privatePatrolLeak=false;
+            window.boundaryObserver=new MutationObserver(() => {
+              if(document.querySelector('[data-testid="patrol-session-'+patrolId+'"]')) window.privatePatrolLeak=true;
+            });
+            window.boundaryObserver.observe(document.body,{childList:true,subtree:true});
+            const original=window.fetch.bind(window);
+            window.fetch=async (...args) => {
+              if(args[0]==='/api/patrol-sessions') await new Promise(r=>setTimeout(r,700));
+              return original(...args);
+            };
+            """,patrolId);
+        loginRole("OTHER","student");
+        heading("Campus Patrol");
+        assertEquals(404,((Number)api("/api/patrol-sessions/"+patrolId+"/checkins","GET").get("status")).intValue());
+        wait.until(d -> d.findElements(By.cssSelector(".animate-pulse")).isEmpty());
+        assertTrue(driver.findElements(testId("patrol-session-"+patrolId)).isEmpty());
+        assertEquals(false,((JavascriptExecutor)driver).executeScript("return window.privatePatrolLeak;"));
+        driver.navigate().refresh();
+        heading("Campus Patrol");
+        assertTrue(driver.findElements(testId("patrol-session-"+patrolId)).isEmpty());
+    }
+
     private void loginSuccessfully() {
         login(password);
         wait.until(ExpectedConditions.visibilityOfElementLocated(testId("text-username")));
