@@ -82,3 +82,11 @@ Optional Firebase client values are listed as empty entries in `.env.example`, `
 ## Agent workflow and daily log
 
 Follow [AGENTS.md](AGENTS.md). Issues are disabled, so [DAILY-LOG.md](DAILY-LOG.md) is the daily log, maintained through pull requests. No merge or deployment is implied by passing local checks.
+
+## Ship-week account-boundary regression slice
+
+Patrol check-in history is limited to the assigned student and admin/safety-official staff. Only the assigned student can record departure during an active, unexpired shift; hidden/missing check-ins return 404 and rejected departures do not change the row. Staff inspection is read-only for check-in actions. Successful login/logout cancels pending React Query reads and clears cached account data before switching identity.
+
+`DATABASE_URL=<disposable PostgreSQL URL> node --test scripts/patrol-boundaries.test.mjs` exercises real role logins and ownership through the production session server (port 5000), using a temporary schema that is removed afterward. It requires CREATE SCHEMA/table permissions, not a mock database. CI runs this regression; Selenium adds real role/two-account browser coverage on the enabled FastAPI stack. See [E2E setup](e2e/README.md) and [DAILY-LOG.md](DAILY-LOG.md) for results and remaining gaps. This bounded fix does not resolve the legacy global notification queries or establish complete authorization for every endpoint.
+
+Live status remains **not live yet**: Amartya owns production signing/session keys, database provisioning and deployment topology. No verified public demo URL is available.

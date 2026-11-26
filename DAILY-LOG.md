@@ -218,3 +218,50 @@ Will do tomorrow:
 - Start the Day 2 P0 role/ownership regression work from latest main, one verified fix per PR, after this audit is reviewed.
 
 Live status: not live yet — owner-blocked on production provisioning/security review and an approved deployment URL. This audit ran disposable local/CI-style services only. No code PR, self-merge, production change, secret/key commit, or change to held PR #1 was made. The unfinished Day 10 work remains preserved separately. Stop after posting this report.
+
+## Ship week — Day 2/3 — campus-safety-hub
+
+Standing rules: branch + PR for every change; tests pass before opening the PR; never commit secrets or invent credentials, licences or metrics; keep README/live status honest; report here, then stop. Never self-merge or touch held PR #1.
+
+Date: Nov 26, 2026. Catch-up report: Nov 25 had no Day 2 brief and no feature work was undertaken, as stated in today's brief. This report uses DAILY-LOG.md because issues are disabled.
+
+Did:
+
+- Pulled latest main [af6af67](https://github.com/Amartya2001-droid/campus-safety-hub/commit/af6af67), including merged audit PR #19, and created `fix/ship-week-account-boundaries` in a clean worktree. Preserved the unfinished Day 10 receipts candidate separately; it was neither copied nor included.
+- Added [failing boundary regressions first](https://github.com/Amartya2001-droid/campus-safety-hub/commit/adb3ca0), then verified that exact regression-only commit separately against the original application code: PostgreSQL-backed gateway TAP **4 pass / 6 fail** (nine subtests plus their parent; the failed parent is included), frontend **22 pass / 4 fail**, selected Selenium role/account cases **1 pass / 4 fail / 0 error / 0 skip**. Other-student/faculty reads returned 200 instead of 404; another student could record the owner's departure; a completed shift accepted departure; missing history returned 200; account cache and staff-control frontend regressions failed. Browser failures were unauthorized 200 responses; the independent frontend tests establish the cache failure. These are intentional before-fix failures, not outstanding failures in the proposed fix.
+- [Fixed the bounded patrol/check-in slice](https://github.com/Amartya2001-droid/campus-safety-hub/commit/0dd59b0): assigned students and admin/safety-official staff can read check-in history; only the assigned student can record an individual departure on an active, unexpired shift. Authorization/state checks are included in the SQL update; rejected requests leave the row unchanged. Hidden/missing resources return 404, anonymous requests 401. Staff retain shift inspection/end permissions, with student-only check-in/departure controls hidden. Successful login/logout cancels pending query reads and clears cached account data before changing identity.
+- Re-ran the required suites and related gates against the [fixed application source](https://github.com/Amartya2001-droid/campus-safety-hub/commit/0dd59b0), including actual database-backed student, second-student, faculty, safety-official and admin gateway logins. Selenium adds four real role cases plus a same-document student-A logout/student-B login; delayed queries and a DOM observer check for transient private patrol cache reuse. Added the gateway regression to CI. Stored sanitized [counts, commands, before/after evidence and raw-report digests](audit/ship-week-day23/results.json); raw framework reports remain in the execution workspace because they can include runtime/fixture details. README and E2E instructions describe this bounded scope and required role fixtures.
+
+### After-fix results
+
+| Suite/check | Pass | Fail | Error | Skip |
+| --- | ---: | ---: | ---: | ---: |
+| Real-PostgreSQL pytest | 111 | 0 | 0 | 0 |
+| Frontend Vitest, 7 files | 26 | 0 | 0 | 0 |
+| Maven/Selenium, full suite | 21 | 0 | 0 | 0 |
+| New patrol/session gateway regression | 10 TAP entries | 0 | 0 | 0 |
+| Existing gateway unit tests | 3 | 0 | 0 | 0 |
+| PostgreSQL session-store regression | 1 | 0 | 0 | 0 |
+| Express smoke, development + production | 2 scenarios | 0 | — | — |
+| FastAPI gateway smoke, development + production | 2 scenarios | 0 | — | — |
+
+The final gateway total includes nine subtests plus one parent, not ten independent workflows; the earlier all-gates invocation had eight subtests plus its parent before the extra role-selection/expiry assertions were added. The expanded final regression was run separately and passed. Smoke numbers count modes/scenarios, not assertions. Frontend includes the existing tautological example. No collected test was skipped. Lint, frontend TypeScript, Vite build and pip check exited 0; lint retains 11 warnings, with existing pytest deprecation, bundle-size and Browserslist warnings. Functions behavioral integration, full server typechecking, external services, load/mobile/accessibility and production remain unverified; no absent capability is counted as a passed or skipped test. No dependency-advisory audit is claimed.
+
+Actual setup: fresh root `npm ci`; Node 20.20.2/npm 10.8.2; reused the existing Python 3.12.14 test venv with unchanged requirements and successful pip check; full JDK 21.0.13/Maven 3.9.11; matching headless Chromium/ChromeDriver 156.0.8078.79. Restarted the disposable local **PostgreSQL 17.11** cluster with a writable local socket directory. Pytest requires `TEST_DATABASE_URL` and CREATE/DROP SCHEMA/table permissions; the gateway regression requires `DATABASE_URL` with the same permissions. Smoke/Selenium require a disposable database because Express initialization seeds demo data. Hosted CI uses PostgreSQL **16**, which was not rerun locally. Selenium used the enabled FastAPI stack, production Express on 5000, FastAPI on 8101 and local HTTPS on 5443, temporary runtime-generated fixture accounts/keys/certificate, local-browser-only certificate acceptance and explicit container-only no-sandbox opt-in; network TLS verification remained enabled. No production account/configuration was used. Cleanup verified zero temporary users/schemas/patrols and removed orphaned fixture sessions from the disposable database; the audit cluster was stopped afterward.
+
+### Updated Days 4–5 fix list
+
+1. **Day 4 — P0: notification/account isolation next, in a separate focused PR.** Reproduce global notification list/count/read-all/single-read behavior with two real accounts; define owner/staff/broadcast visibility explicitly, then fix storage/query ownership and per-account read state. Require negative gateway/database tests plus two-account browser checks before opening it. Review the user directory and remaining legacy/Express-fallback access controls; this patrol fix does not approve the whole authorization surface. Correct the misleading configuration-only `StarRez Connected` panel wording as a separately verified small change.
+2. **Day 4 follow-up / Day 5 gate — patrol lifecycle and session review.** Extend this boundary coverage to assignment → accept/decline → check-in → depart → end/expiry and role/error recovery. Review end/check-in concurrency, failed-logout behavior, session-secret fallback, demo seeding, retained StarRez passwords and external URL handling. Add server typechecking/meaningful Functions tests as bounded follow-ups; retain PostgreSQL 16 hosted-CI verification. Do not trade unresolved P0 access controls for feature scope.
+3. **Day 5 — P1 receipts only after the P0 boundary work is verified.** Review the preserved candidate rather than treating it as shipped. Define stored dashboard acknowledgement semantics, repeatable migration/unique message-account records, staff aggregates and reader-only own scope; test retries/concurrency/rollback and multi-account visibility with PostgreSQL/frontend/Selenium. No push, DND-bypass, human-read or device-delivery guarantee. If P0 work consumes the day, explicitly defer receipts. An approved staging rehearsal needs Amartya's provisioning; otherwise record an owner-blocked go/no-go rather than inventing configuration.
+
+Blocked on:
+
+- **Owner-blocked — Amartya:** production `SECRET_KEY`, `DATABASE_URL`, `SESSION_SECRET`, approved `FASTAPI_URL`/HTTPS/private-network/proxy topology, demo-account policy, security review and an approved live URL/deployment decision. Authorized StarRez/Firebase service configuration and real integration validation also remain owner-dependent. No values belong in reports or PRs.
+- **Engineering follow-up:** global notifications and other legacy boundaries remain unverified/unfixed here; complete patrol lifecycle and external integrations are not established by these cases. Broadcast delivery receipts are still absent from main. These are separate from production provisioning.
+
+Will do tomorrow:
+
+- Start the Day 4 notification/account-isolation regression from latest main after review, one focused verified fix per PR; retain the remaining release gates above.
+
+Live status: **not live yet — blocked by Amartya's production provisioning, security review and deployment URL decision.** This branch contains one bounded fix with its regressions, evidence and report. No self-merge, production change, secret commit or interaction with held PR #1. Stop after posting this report.

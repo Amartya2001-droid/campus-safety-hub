@@ -4,6 +4,8 @@ This is a separate Maven project using Selenium 4.52.0 and JUnit 6.1.3 on Java 2
 
 Coverage:
 
+- Real database-backed student, second-student, faculty and safety-official logins enforce patrol check-in visibility and departure ownership. A same-document logout/login watches for transient private patrol cache reuse while the second account loads. Staff can inspect but cannot record the student's departure.
+
 - A staff user fills the real broadcast form, publishes to the dashboard feed, verifies database-derived authorship through the UI/API and reloads the stored record; no device-delivery claim is made.
 
 - An escort fixture is created through the authenticated API, shown in the dashboard preview, assigned to the signed-in staff member without an invented ETA, started, completed and refreshed through the real UI; pending counts track the committed workflow.
@@ -30,7 +32,7 @@ DATABASE_URL=postgresql://postgres@127.0.0.1:5432/postgres \
   PYTHON=backend/.venv/bin/python node e2e/run-local.mjs
 ```
 
-The runner starts FastAPI on 8101 and production Express on 5000, then serves a loopback HTTPS test proxy on 5443. This lets Chrome exercise real production `Secure` cookies and SPA fallback. Ports must be free. The runner generates a one-day self-signed certificate and private key in an OS temporary directory, supplies temporary random signing/session keys in memory, and removes the TLS files afterward. Only this local browser run opts into accepting that certificate; Maven/network TLS verification stays enabled. It provisions a randomly named disposable admin user and removes that account and this run's location/SOS/escort/broadcast/notification fixtures in cleanup. Existing Express initialization seeds demo accounts in an empty database: never run this against production or shared operational data.
+The runner starts FastAPI on 8101 and production Express on 5000, then serves a loopback HTTPS test proxy on 5443. This lets Chrome exercise real production `Secure` cookies and SPA fallback. Ports must be free. The runner generates a one-day self-signed certificate and private key in an OS temporary directory, supplies temporary random signing/session keys in memory, and removes the TLS files afterward. Only this local browser run opts into accepting that certificate; Maven/network TLS verification stays enabled. It provisions randomly named disposable admin, two student, faculty and safety-official accounts, plus a private active patrol/check-in fixture. Cleanup removes those accounts and this run's patrol/check-in/location/SOS/escort/broadcast/notification fixtures. Existing Express initialization seeds demo accounts in an empty database: never run this against production or shared operational data.
 
 Useful optional environment variables:
 
@@ -49,10 +51,13 @@ The runner always targets its own local stack. A nonzero Maven/test exit makes t
 
 ## Test an already running app
 
-The Java suite reads **`APP_BASE_URL`**, default **`http://localhost:5000`**. Supply an authorized admin test account through environment variables; neither the suite nor the repository supplies a credential default:
+The Java suite reads **`APP_BASE_URL`**, default **`http://localhost:5000`**. Supply authorized disposable role accounts and a private patrol fixture through environment variables; neither the suite nor the repository supplies a credential default:
 
 ```sh
 # Privately set E2E_EMAIL and E2E_PASSWORD for an authorized disposable admin account.
+# Also set E2E_{OWNER,OTHER,FACULTY,STAFF}_{EMAIL,PASSWORD} for two students,
+# faculty and safety_official, plus E2E_PATROL_ID / E2E_CHECKIN_ID for an active
+# patrol assigned to OWNER with an open check-in. Prefer the automatic local runner.
 # The app must have FASTAPI_URL configured; see backend/README.md.
 APP_BASE_URL=http://localhost:5000 mvn -f e2e/pom.xml test
 ```

@@ -1,0 +1,240 @@
+{
+  "audit": "Ship week Day 2/3",
+  "date": "2026-11-26",
+  "base_commit": "af6af67",
+  "regression_commit": "adb3ca0",
+  "fixed_application_commit": "0dd59b0bd53b068e6c3874615f5676cae0e12ffa",
+  "scope": "Patrol check-in visibility/departure ownership, role logins and account query-cache isolation. Notifications remain a separate P0.",
+  "setup": {
+    "node": "20.20.2",
+    "npm": "10.8.2",
+    "python": "3.12.14",
+    "postgresql": "17.11",
+    "ci_postgresql": "16; not rerun locally",
+    "jdk": "21.0.13",
+    "maven": "3.9.11",
+    "chromium_and_driver": "156.0.8078.79",
+    "root_npm_ci": "fresh, exit 0",
+    "python_environment": "Existing Day 1 venv reused; unchanged requirements-dev.txt; pip check exit 0",
+    "database": "Existing disposable local audit cluster restarted with a writable Unix socket directory; actual PostgreSQL, not mocks. Regression and pytest use temporary schemas. Smoke/E2E require a disposable database because initialization seeds demo users.",
+    "required_permissions": "CREATE/DROP SCHEMA, tables and fixtures; never production/shared operational data",
+    "browser": "Headless Chrome; explicit no-sandbox only in isolated container. Temporary local HTTPS certificate accepted only in this browser; network/Maven TLS verification preserved."
+  },
+  "failing_before_fix": {
+    "source": "Regression-only commit adb3ca0: application source unchanged from af6af67. Separate worktree; expected nonzero test exits.",
+    "gateway": {
+      "tests": 10,
+      "pass": 4,
+      "fail": 6,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "gateway_count_note": "10 TAP entries = 9 subtests plus parent. Six failures include the failed parent, not six distinct bugs.",
+    "frontend": {
+      "collected": 26,
+      "passed": 22,
+      "failed": 4,
+      "skipped": 0,
+      "success": false
+    },
+    "selenium_selected": {
+      "collected": 5,
+      "failed": 4,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 1
+    },
+    "selenium_filter": "MAVEN_OPTS=-Dtest=PortalTest#realRolesRespectPatrolReadAndWriteBoundaries+switchingStudentAccountsDoesNotReusePrivatePatrolCache",
+    "observations": [
+      "Other student and faculty check-in reads returned 200 instead of 404.",
+      "Another student could mutate the owner check-in; a completed shift still accepted departure.",
+      "Missing-session read returned 200 instead of 404.",
+      "Two frontend auth-cache tests retained prior account data; two staff UI cases exposed owner controls.",
+      "Selected real-role browser cases failed on unauthorized 200 responses. The switch test stops at its API denial assertion on old code; the independent frontend tests demonstrate the cache bug."
+    ]
+  },
+  "passing_after_fix": {
+    "pytest": {
+      "collected": 111,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 111
+    },
+    "frontend": {
+      "collected": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    "selenium": {
+      "collected": 21,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 21
+    },
+    "patrol_boundaries": {
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "gateway_existing": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "session_regression": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "smoke_express": {
+      "development": "pass",
+      "production": "pass"
+    },
+    "smoke_fastapi_gateway": {
+      "development": "pass",
+      "production": "pass"
+    },
+    "quality_gates": {
+      "lint_exit": 0,
+      "lint_errors": 0,
+      "lint_warnings": 11,
+      "frontend_typecheck_exit": 0,
+      "vite_build_exit": 0,
+      "pip_check_exit": 0
+    },
+    "count_notes": [
+      "Patrol boundary TAP total includes one parent and nine subtests. Final expanded boundary test rerun is boundaries-final.log; the earlier all-gates run had eight subtests plus its parent.",
+      "Selenium has 16 existing invocations plus four role cases and one same-document account-switch case.",
+      "Frontend has 21 existing tests plus two auth-cache and three patrol-control cases; the original tautological example remains.",
+      "Smoke figures are development/production scenarios, not collected assertion counts.",
+      "No collected test skipped. Functions behavioral integration and live production were not verified; absence is not a skipped/passing test."
+    ]
+  },
+  "commands": {
+    "all_gates": [
+      "npm run lint",
+      "npm run typecheck",
+      "node node_modules/vitest/vitest.mjs run --reporter=json --outputFile=<artifacts>/vitest.json",
+      "npm run build",
+      "TEST_DATABASE_URL=<disposable URL> <venv>/bin/python -m pytest backend/tests -q --junitxml=<artifacts>/pytest.xml",
+      "node --import tsx --test scripts/campus-backend.test.mjs",
+      "DATABASE_URL=<disposable URL> node --test scripts/patrol-boundaries.test.mjs",
+      "DATABASE_URL=<disposable URL> node --test scripts/session-persistence.test.mjs",
+      "DATABASE_URL=<disposable URL> npm run test:smoke",
+      "DATABASE_URL=<disposable URL> PYTHON=<venv>/bin/python node scripts/backend-smoke.mjs",
+      "DATABASE_URL=<disposable URL> PYTHON=<venv>/bin/python node e2e/run-local.mjs"
+    ]
+  },
+  "steps": [
+    {
+      "name": "lint",
+      "exit_code": 0
+    },
+    {
+      "name": "typecheck",
+      "exit_code": 0
+    },
+    {
+      "name": "frontend",
+      "exit_code": 0
+    },
+    {
+      "name": "build",
+      "exit_code": 0
+    },
+    {
+      "name": "pytest",
+      "exit_code": 0
+    },
+    {
+      "name": "gateway",
+      "exit_code": 0
+    },
+    {
+      "name": "boundaries",
+      "exit_code": 0
+    },
+    {
+      "name": "session",
+      "exit_code": 0
+    },
+    {
+      "name": "smoke-express",
+      "exit_code": 0
+    },
+    {
+      "name": "smoke-fastapi",
+      "exit_code": 0
+    },
+    {
+      "name": "selenium",
+      "exit_code": 0
+    }
+  ],
+  "selenium_cases": [
+    "escortCanBeAssignedStartedAndCompletedWithoutInventedEta",
+    "logoutInvalidatesSessionAndProtectedRouteReload",
+    "validCredentialsOpenDashboardAndAuthenticateSession",
+    "sosAlertCanBeAssignedAndResolvedThroughDashboard",
+    "switchingStudentAccountsDoesNotReusePrivatePatrolCache",
+    "invalidCredentialsStaySignedOut",
+    "staffCanPublishAndReloadDashboardBroadcastWithoutDeliveryClaims",
+    "campusMapWritesThroughRebuiltBackend",
+    "directSpaRoutesAndRefreshWork(String, String)[1]",
+    "directSpaRoutesAndRefreshWork(String, String)[2]",
+    "directSpaRoutesAndRefreshWork(String, String)[3]",
+    "directSpaRoutesAndRefreshWork(String, String)[4]",
+    "directSpaRoutesAndRefreshWork(String, String)[5]",
+    "directSpaRoutesAndRefreshWork(String, String)[6]",
+    "directSpaRoutesAndRefreshWork(String, String)[7]",
+    "directSpaRoutesAndRefreshWork(String, String)[8]",
+    "sessionSurvivesReloadAndDirectNavigation",
+    "realRolesRespectPatrolReadAndWriteBoundaries(String, String, boolean)[1]",
+    "realRolesRespectPatrolReadAndWriteBoundaries(String, String, boolean)[2]",
+    "realRolesRespectPatrolReadAndWriteBoundaries(String, String, boolean)[3]",
+    "realRolesRespectPatrolReadAndWriteBoundaries(String, String, boolean)[4]"
+  ],
+  "raw_report_sha256": {
+    "pytest.xml": "f3409cff713d859616943cda9fafc93f15c9a7e58b06a310099caae988987a7f",
+    "vitest.json": "84a0622a48acc109194b370867298a6719486d80e9a17ff9b4002283cec08b9b",
+    "selenium.xml": "f7a385bbe493133fcf8cfc9630c6b8c900edd5c193f23f0ab33412ca3249fe31",
+    "boundaries-final.log": "4ef182fab67e983b0574f2abdc14ec803ca919d0c31a27f34d7093f8b942d14f",
+    "gateway.log": "31e34c8ecdf3a201a12a04c56f8f84ae047935cdb978c2b86d39b79505f8a22b",
+    "session.log": "b0f72baca29e97a4bb699800b25c632e2b841187b3dae6dc9e0b5c89b8cec6b9",
+    "smoke-express.log": "bbbbf2a7cd202e6bb5a10553339980d48538aca8b80713c1c8c3feee9d98a954",
+    "smoke-fastapi.log": "3b8e7bf2aeea516926f4871af58e77b9b7400cfdefdd7b9bcb6a72b77d57ed06",
+    "red-frontend.json": "f94f1e3ddeda262d4d0db3c43371a2318c4a291a92cf2235f3f8bab14033efbf",
+    "red-boundaries.log": "d790897f88431ccf7c23c717e9c998ee28779fdd1ef341e73bcfd90aa5d1919e",
+    "red-selenium.xml": "fd526448f9289ecd4259aa1d86c68c35122ce61162d03591b271aed05f6094b3"
+  },
+  "evidence_note": "Sanitized counts, inventory and report digests only. Raw framework reports/logs stay in the workspace because they can contain test environment/fixture details.",
+  "limits": [
+    "Only this patrol/check-in boundary is fixed; global notifications, user directory and other legacy access controls need separate review.",
+    "Role browser tests exercise read/denied writes and UI controls; this is not the complete patrol lifecycle or complete role matrix for every endpoint.",
+    "Broadcast delivery receipts remain absent from main and excluded from this branch.",
+    "No production, Firebase, StarRez, device delivery or DND bypass validation.",
+    "No current dependency-advisory audit. Functions build not rerun in this focused change.",
+    "Existing lint/deprecation/bundle-size/Browserslist warnings remain."
+  ],
+  "owner_blocked": [
+    "Production SECRET_KEY",
+    "Production DATABASE_URL",
+    "Production SESSION_SECRET",
+    "Approved FASTAPI_URL/HTTPS/private-network/proxy deployment topology",
+    "Security review and approved live URL; authorized external integration configuration"
+  ]
+}

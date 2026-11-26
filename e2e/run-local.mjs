@@ -25,6 +25,8 @@ const env = { ...process.env, E2E_RUN_ID: runId, NODE_ENV: 'production', APP_BAS
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL, connectionTimeoutMillis: 5000 });
 const children = [];
 let userId;
+const boundaryUserIds = [];
+let boundaryPatrolId;
 let tlsProxy;
 let certificateDirectory;
 function start(command, args, inherit = false) {
@@ -82,6 +84,21 @@ try {
   const { rows } = await pool.query('INSERT INTO users (name,email,role,password_hash) VALUES ($1,$2,$3,$4) RETURNING id',
     ['Selenium Test User', email, 'admin', await bcrypt.hash(env.E2E_PASSWORD, 10)]);
   userId = rows[0].id;
+  // Real database-backed role accounts; credentials exist only for this run.
+  for (const [label, role] of [['OWNER','student'],['OTHER','student'],['FACULTY','faculty'],['STAFF','safety_official']]) {
+    env[`E2E_${label}_EMAIL`] = `${randomUUID()}@example.invalid`;
+    env[`E2E_${label}_PASSWORD`] = randomBytes(32).toString('base64url');
+    const { rows } = await pool.query('INSERT INTO users (name,email,role,password_hash) VALUES ($1,$2,$3,$4) RETURNING id',
+      [`Boundary ${label} ${runId}`, env[`E2E_${label}_EMAIL`], role, await bcrypt.hash(env[`E2E_${label}_PASSWORD`], 10)]);
+    boundaryUserIds.push(rows[0].id);
+  }
+  const patrol = await pool.query("INSERT INTO patrol_sessions (created_by,assigned_student_id,status,started_at,notes) VALUES ($1,$2,'active',NOW(),$3) RETURNING id",
+    [boundaryUserIds[3], boundaryUserIds[0], `Selenium private patrol ${runId}`]);
+  boundaryPatrolId = patrol.rows[0].id;
+  env.E2E_PATROL_ID = String(boundaryPatrolId);
+  const checkin = await pool.query('INSERT INTO patrol_checkins (session_id,residence_name) VALUES ($1,$2) RETURNING id',
+    [boundaryPatrolId, `Private residence ${runId}`]);
+  env.E2E_CHECKIN_ID = String(checkin.rows[0].id);
   const maven = start(env.MVN || 'mvn', ['--batch-mode', '--no-transfer-progress', '-f', 'e2e/pom.xml',
     ...(env.MAVEN_SETTINGS ? ['--settings', env.MAVEN_SETTINGS] : []),
     ...(env.MAVEN_REPO_LOCAL ? [`-Dmaven.repo.local=${env.MAVEN_REPO_LOCAL}`] : []), 'test'], true);
@@ -101,6 +118,11 @@ try {
     const broadcastPrefix = `Selenium Broadcast ${runId} %`;
     await pool.query("DELETE FROM notifications WHERE reference_type='broadcast_alert' AND reference_id IN (SELECT id FROM broadcast_alerts WHERE title LIKE $1)", [broadcastPrefix]);
     await pool.query('DELETE FROM broadcast_alerts WHERE title LIKE $1', [broadcastPrefix]);
+    if (boundaryPatrolId) {
+      await pool.query('DELETE FROM patrol_checkins WHERE session_id=$1', [boundaryPatrolId]);
+      await pool.query('DELETE FROM patrol_sessions WHERE id=$1', [boundaryPatrolId]);
+    }
+    await pool.query('DELETE FROM users WHERE id = ANY($1::int[])', [boundaryUserIds]);
     if (userId) await pool.query('DELETE FROM users WHERE id=$1', [userId]);
     // Remove only this run's leftover location fixture, including on assertion failure.
     await pool.query('DELETE FROM campus_locations WHERE name LIKE $1', [`Selenium fixture ${runId} %`]);

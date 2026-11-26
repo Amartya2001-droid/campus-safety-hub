@@ -409,7 +409,8 @@ async function start() {
   });
 
   app.get("/api/patrol-sessions/:id/checkins", requireAuth, async (req, res) => {
-    const checkins = await getPatrolCheckins(parseInt(req.params.id as string));
+    const checkins = await getPatrolCheckins(parseInt(req.params.id as string), req.session.userId!);
+    if (!checkins) return res.status(404).json({ message: "Patrol session not found" });
     return res.json(checkins);
   });
 
@@ -433,7 +434,7 @@ async function start() {
   });
 
   app.patch("/api/patrol-checkins/:id/depart", requireAuth, async (req, res) => {
-    const checkin = await departPatrolCheckin(parseInt(req.params.id as string));
+    const checkin = await departPatrolCheckin(parseInt(req.params.id as string), req.session.userId!);
     if (!checkin) return res.status(404).json({ message: "Checkin not found or already departed" });
     return res.json(checkin);
   });

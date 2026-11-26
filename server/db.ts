@@ -533,7 +533,16 @@ export async function endPatrolSession(sessionId: number): Promise<PatrolSession
   return rows[0] || null;
 }
 
-export async function getPatrolCheckins(sessionId: number): Promise<PatrolCheckin[]> {
+// Resolve visibility in PostgreSQL, rather than trusting a client-supplied session ID.
+// A null result deliberately treats hidden and nonexistent sessions identically.
+export async function getPatrolCheckins(sessionId: number, userId: number): Promise<PatrolCheckin[] | null> {
+  const { rows: visible } = await pool.query(
+    `SELECT ps.id FROM patrol_sessions ps JOIN users u ON u.id = $2
+     WHERE ps.id = $1 AND (u.role IN ('admin', 'safety_official')
+       OR (u.role = 'student' AND ps.assigned_student_id = u.id))`,
+    [sessionId, userId]
+  );
+  if (!visible.length) return null;
   const { rows } = await pool.query(
     `SELECT * FROM patrol_checkins WHERE session_id = $1 ORDER BY arrival_at ASC`,
     [sessionId]
@@ -555,11 +564,18 @@ export async function createPatrolCheckin(sessionId: number, residenceName: stri
   return rows[0];
 }
 
-export async function departPatrolCheckin(checkinId: number): Promise<PatrolCheckin | null> {
+// Authorization and state checks are part of the write, not a separate preflight.
+// Staff can inspect a patrol but only its assigned student records a departure.
+export async function departPatrolCheckin(checkinId: number, userId: number): Promise<PatrolCheckin | null> {
   const { rows } = await pool.query(
-    `UPDATE patrol_checkins SET departure_at = NOW()
-     WHERE id = $1 AND departure_at IS NULL RETURNING *`,
-    [checkinId]
+    `UPDATE patrol_checkins pc SET departure_at = NOW()
+     FROM patrol_sessions ps, users u
+     WHERE pc.id = $1 AND pc.session_id = ps.id AND pc.departure_at IS NULL
+       AND u.id = $2 AND u.role = 'student' AND ps.assigned_student_id = u.id
+       AND ps.status = 'active'
+       AND ps.started_at + (ps.max_duration_minutes || ' minutes')::INTERVAL > NOW()
+     RETURNING pc.*`,
+    [checkinId, userId]
   );
   return rows[0] || null;
 }

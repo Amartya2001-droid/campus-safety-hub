@@ -1,0 +1,21 @@
+import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { afterEach, expect, test, vi } from 'vitest';
+import type { ReactNode } from 'react';
+import Patrols from '@/pages/Patrols';
+const auth = vi.hoisted(() => ({user:{id:1,name:'Fixture',role:'student'}}));
+vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>auth}));
+vi.mock('@/components/DashboardLayout',()=>({DashboardLayout:({children}:{children:ReactNode})=><main>{children}</main>}));
+afterEach(()=>vi.unstubAllGlobals());
+test.each(['student','safety_official','admin'])('%s sees an active check-in with only owner controls',async role=>{
+  auth.user={id:role==='student'?1:2,name:'Fixture',role};
+  const session={id:7,assigned_student_id:1,student_name:'Patrol owner',status:'active',started_at:new Date().toISOString(),max_duration_minutes:300,requested_at:new Date().toISOString()};
+  const checkin={id:8,session_id:7,residence_name:'Fixture residence',arrival_at:new Date().toISOString(),departure_at:null};
+  vi.stubGlobal('fetch',vi.fn(async (url:string)=>new Response(JSON.stringify(url.includes('checkins')?[checkin]:url==='/api/users'?[]:[session]),{status:200})));
+  const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});
+  render(<QueryClientProvider client={client}><Patrols /></QueryClientProvider>);
+  expect(await screen.findByTestId('checkin-8')).toHaveTextContent('Fixture residence');
+  expect(screen.queryByTestId('button-depart-8')!==null).toBe(role==='student');
+  expect(screen.queryByTestId('button-checkin')!==null).toBe(role==='student');
+  expect(screen.queryByText('Auto-departed')).not.toBeInTheDocument();
+});
