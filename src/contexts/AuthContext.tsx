@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 
 export interface AppUser {
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,13 +52,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(data.message || "Login failed");
     }
     const data = await res.json();
+    await queryClient.cancelQueries();
+    queryClient.clear();
     setUser(data);
-  }, []);
+  }, [queryClient]);
 
   const logout = useCallback(async () => {
     await fetch("/api/logout", { method: "POST", credentials: "include" });
+    await queryClient.cancelQueries();
+    queryClient.clear();
     setUser(null);
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({ user, loading, login, logout }),

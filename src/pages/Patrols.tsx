@@ -77,7 +77,7 @@ function PatrolTimer({ startedAt, maxMinutes }: { startedAt: string; maxMinutes:
   );
 }
 
-function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: boolean }) {
+function CheckinPanel({ sessionId, isActive, canManage }: { sessionId: number; isActive: boolean; canManage: boolean }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [residence, setResidence] = useState("");
@@ -123,7 +123,7 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
         <Building2 className="h-3 w-3" /> Residence Check-ins
       </h4>
 
-      {isActive && (
+      {isActive && canManage && (
         <div className="flex gap-2">
           <Input
             placeholder="Enter residence name..."
@@ -176,7 +176,7 @@ function CheckinPanel({ sessionId, isActive }: { sessionId: number; isActive: bo
                     )}
                   </div>
                 </div>
-                {!c.departure_at && isActive && (
+                {!c.departure_at && isActive && canManage && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -290,7 +290,7 @@ function SessionCard({ session, isAdmin }: { session: Omit<PatrolSession, "statu
         )}
 
         {expanded && (
-          <CheckinPanel sessionId={session.id} isActive={isActive} />
+          <CheckinPanel sessionId={session.id} isActive={isActive} canManage={isMySession} />
         )}
 
         {(session.status === "completed" || session.status === "expired") && session.started_at && session.ended_at && !expanded && (
